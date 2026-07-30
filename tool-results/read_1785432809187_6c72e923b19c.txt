@@ -1,0 +1,831 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useCallback, useEffect, useMemo, useState } from 'react';
+     4→     4→import { useAuth } from '@/components/providers/auth-provider';
+     5→     5→import {
+     6→     6→  COUNTRIES,
+     7→     7→  MILESTONE_TIERS,
+     8→     8→  MOCK_LEADERBOARD,
+     9→     9→  countryFlag,
+    10→    10→  countryName,
+    11→    11→  milestoneTierForChips,
+    12→    12→  type InspectedPlayer,
+    13→    13→} from '@/lib/game-config';
+    14→    14→import type { LeaderboardEntry } from '@/lib/types';
+    15→    15→import {
+    16→    16→  GlowBlob,
+    17→    17→  MicroLabel,
+    18→    18→  PanelSkeleton,
+    19→    19→  NotSignedIn,
+    20→    20→  notify,
+    21→    21→  type ToastFn,
+    22→    22→} from './_panel-primitives';
+    23→    23→import {
+    24→    24→  Trophy,
+    25→    25→  Crown,
+    26→    26→  Globe,
+    27→    27→  Medal,
+    28→    28→  Zap,
+    29→    29→  Search,
+    30→    30→  Loader2,
+    31→    31→  RefreshCw,
+    32→    32→  MapPin,
+    33→    33→  Inbox,
+    34→    34→} from 'lucide-react';
+    35→    35→
+    36→    36→interface LeaderboardsProps {
+    37→    37→  onToast?: ToastFn;
+    38→    38→  onInspectPlayer?: (p: InspectedPlayer) => void;
+    39→    39→}
+    40→    40→
+    41→    41→type TopTab = 'summit' | 'global' | 'national' | 'tiers';
+    42→    42→
+    43→    43→const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    44→    44→
+    45→    45→// National seed data for top-3 of select countries (per audit H.10)
+    46→    46→const COUNTRY_SEEDS: Record<string, { name: string; userTag: string; chips: number; level: number }[]> = {
+    47→    47→  IN: [
+    48→    48→    { name: 'Hari', userTag: '#IND-001', chips: 10_000_000, level: 50 },
+    49→    49→    { name: 'Arjun_Viper', userTag: '#IND-002', chips: 8_400_000, level: 48 },
+    50→    50→    { name: 'Delhi_King', userTag: '#IND-003', chips: 6_200_000, level: 45 },
+    51→    51→  ],
+    52→    52→  US: [
+    53→    53→    { name: 'Apex_Viper', userTag: '#USA-882', chips: 9_400_000, level: 49 },
+    54→    54→    { name: 'Cyber_Wolf', userTag: '#USA-102', chips: 7_800_000, level: 46 },
+    55→    55→  ],
+    56→    56→  KR: [
+    57→    57→    { name: 'K-Snake_Master', userTag: '#KOR-114', chips: 8_900_000, level: 49 },
+    58→    58→  ],
+    59→    59→};
+    60→    60→
+    61→    61→// Generate ranks 1..100 for the global board (mixing mock + auto-generated)
+    62→    62→function generateGlobalRanks(playerTag?: string): LeaderboardEntry[] {
+    63→    63→  const out: LeaderboardEntry[] = [];
+    64→    64→  const seenTags = new Set<string>();
+    65→    65→
+    66→    66→  // Hall-of-fame top achievers as the global top tier
+    67→    67→  const topAchievers: { name: string; userTag: string; country: string; chips: number; level: number }[] = [
+    68→    68→    { name: 'Hari', userTag: '#IND-001', country: 'IN', chips: 10_000_000, level: 50 },
+    69→    69→    { name: 'Apex_Viper', userTag: '#USA-882', country: 'US', chips: 9_400_000, level: 49 },
+    70→    70→    { name: 'K-Snake_Master', userTag: '#KOR-114', country: 'KR', chips: 8_900_000, level: 49 },
+    71→    71→    { name: 'Shadow_Ninja', userTag: '#JPN-309', country: 'JP', chips: 5_000_000, level: 48 },
+    72→    72→    { name: 'Viper_Zero', userTag: '#USA-402', country: 'US', chips: 2_500_000, level: 47 },
+    73→    73→    { name: 'Rookie_Striker', userTag: '#IND-104', country: 'IN', chips: 1_200_000, level: 32 },
+    74→    74→  ];
+    75→    75→
+    76→    76→  topAchievers.forEach((p, i) => {
+    77→    77→    out.push({
+    78→    78→      name: p.name,
+    79→    79→      userTag: p.userTag,
+    80→    80→      country: p.country,
+    81→    81→      bankedChips: p.chips,
+    82→    82→      level: p.level,
+    83→    83→      rank: i + 1,
+    84→    84→      isPlayer: p.userTag === playerTag,
+    85→    85→    });
+    86→    86→    seenTags.add(p.userTag);
+    87→    87→  });
+    88→    88→
+    89→    89→  // Mock leaderboard next
+    90→    90→  MOCK_LEADERBOARD.forEach((m, i) => {
+    91→    91→    if (seenTags.has(m.userTag)) return;
+    92→    92→    out.push({
+    93→    93→      name: m.name,
+    94→    94→      userTag: m.userTag,
+    95→    95→      country: m.country,
+    96→    96→      bankedChips: m.bankedChips,
+    97→    97→      level: m.level,
+    98→    98→      rank: out.length + 1,
+    99→    99→      isPlayer: m.userTag === playerTag,
+   100→   100→    });
+   101→   101→    seenTags.add(m.userTag);
+   102→   102→  });
+   103→   103→
+   104→   104→  // Auto-generate ranks 1-100 if sparse
+   105→   105→  while (out.length < 100) {
+   106→   106→    const i = out.length;
+   107→   107→    const chips = Math.max(50_000, 10_000_000 - i * 95_000 + Math.floor(Math.random() * 20_000));
+   108→   108→    const level = Math.max(5, 50 - Math.floor(i / 2.2));
+   109→   109→    out.push({
+   110→   110→      name: `Viper_Challenger_${i + 1}`,
+   111→   111→      userTag: `VRP-${1000 + i}`,
+   112→   112→      country: COUNTRIES[i % COUNTRIES.length].code,
+   113→   113→      bankedChips: chips,
+   114→   114→      level,
+   115→   115→      rank: i + 1,
+   116→   116→    });
+   117→   117→  }
+   118→   118→
+   119→   119→  return out.slice(0, 100);
+   120→   120→}
+   121→   121→
+   122→   122→// Country #1 summit table - for each country, show one champion
+   123→   123→function generateCountrySummit(): { country: string; name: string; userTag: string; chips: number; level: number }[] {
+   124→   124→  return COUNTRIES.map((c, idx) => {
+   125→   125→    const seed = COUNTRY_SEEDS[c.code]?.[0];
+   126→   126→    if (seed) {
+   127→   127→      return {
+   128→   128→        country: c.code,
+   129→   129→        name: seed.name,
+   130→   130→        userTag: seed.userTag,
+   131→   131→        chips: seed.chips,
+   132→   132→        level: seed.level,
+   133→   133→      };
+   134→   134→    }
+   135→   135→    return {
+   136→   136→      country: c.code,
+   137→   137→      name: `Apex_${c.code}_Leader`,
+   138→   138→      userTag: `#${c.code}-001`,
+   139→   139→      chips: 10_000_000 - idx * 450_000,
+   140→   140→      level: 50 - idx,
+   141→   141→    };
+   142→   142→  }).sort((a, b) => b.chips - a.chips);
+   143→   143→}
+   144→   144→
+   145→   145→// National board for a given country code - top 100
+   146→   146→function generateNationalBoard(countryCode: string): LeaderboardEntry[] {
+   147→   147→  const country = COUNTRIES.find((c) => c.code === countryCode);
+   148→   148→  const countryDisplayName = country?.name || countryCode;
+   149→   149→  const seeds = COUNTRY_SEEDS[countryCode] || [];
+   150→   150→  const out: LeaderboardEntry[] = [];
+   151→   151→  const seenTags = new Set<string>();
+   152→   152→
+   153→   153→  seeds.forEach((s, i) => {
+   154→   154→    out.push({
+   155→   155→      name: s.name,
+   156→   156→      userTag: s.userTag,
+   157→   157→      country: countryCode,
+   158→   158→      bankedChips: s.chips,
+   159→   159→      level: s.level,
+   160→   160→      rank: i + 1,
+   161→   161→    });
+   162→   162→    seenTags.add(s.userTag);
+   163→   163→  });
+   164→   164→
+   165→   165→  while (out.length < 100) {
+   166→   166→    const i = out.length;
+   167→   167→    const chips = Math.max(50_000, 5_000_000 - i * 47_000);
+   168→   168→    const level = Math.max(5, 45 - Math.floor(i / 2.5));
+   169→   169→    out.push({
+   170→   170→      name: `${countryDisplayName}_Challenger_${i + 1}`,
+   171→   171→      userTag: `#${countryCode}-${100 + i}`,
+   172→   172→      country: countryCode,
+   173→   173→      bankedChips: chips,
+   174→   174→      level,
+   175→   175→      rank: i + 1,
+   176→   176→    });
+   177→   177→    seenTags.add(`${countryCode}-${100 + i}`);
+   178→   178→  }
+   179→   179→
+   180→   180→  return out;
+   181→   181→}
+   182→   182→
+   183→   183→// Milestone-tier board - players at each milestone
+   184→   184→function generateMilestoneBoard(tierId: string): LeaderboardEntry[] {
+   185→   185→  if (tierId === 'all') {
+   186→   186→    return generateGlobalRanks();
+   187→   187→  }
+   188→   188→  const tier = MILESTONE_TIERS.find((t) => t.id === tierId);
+   189→   189→  if (!tier) return [];
+   190→   190→
+   191→   191→  const out: LeaderboardEntry[] = [];
+   192→   192→
+   193→   193→  // t-1crore tier special: only 3 achievers (Hari, Apex_Viper, K-Snake_Master)
+   194→   194→  if (tierId === 'omega' || tier.id === 'omega') {
+   195→   195→    out.push({ name: 'Hari', userTag: '#IND-001', country: 'IN', bankedChips: 10_000_000, level: 50, rank: 1 });
+   196→   196→    out.push({ name: 'Apex_Viper', userTag: '#USA-882', country: 'US', bankedChips: 10_000_000, level: 49, rank: 2 });
+   197→   197→    out.push({ name: 'K-Snake_Master', userTag: '#KOR-114', country: 'KR', bankedChips: 10_000_000, level: 49, rank: 3 });
+   198→   198→    return out;
+   199→   199→  }
+   200→   200→
+   201→   201→  // Rookie tier - all players below 100K chips
+   202→   202→  if (tierId === 'rookie') {
+   203→   203→    out.push({ name: 'Starter_Pawn', userTag: '#GEN-000', country: 'US', bankedChips: 45_000, level: 8, rank: 1 });
+   204→   204→    while (out.length < 100) {
+   205→   205→      const i = out.length;
+   206→   206→      out.push({
+   207→   207→        name: `${COUNTRIES[i % COUNTRIES.length].name.split(' ')[0]}_Rookie_${i + 1}`,
+   208→   208→        userTag: `#${COUNTRIES[i % COUNTRIES.length].code}-${200 + i}`,
+   209→   209→        country: COUNTRIES[i % COUNTRIES.length].code,
+   210→   210→        bankedChips: Math.max(1_000, 90_000 - i * 880),
+   211→   211→        level: Math.max(1, 10 - Math.floor(i / 12)),
+   212→   212→        rank: i + 1,
+   213→   213→      });
+   214→   214→    }
+   215→   215→    return out;
+   216→   216→  }
+   217→   217→
+   218→   218→  // First achiever for known tiers
+   219→   219→  const firstAchieverMap: Record<string, { name: string; userTag: string; country: string }> = {
+   220→   220→    bronze: { name: 'Rookie_Striker', userTag: '#IND-104', country: 'IN' },
+   221→   221→    silver: { name: 'Viper_Zero', userTag: '#USA-402', country: 'US' },
+   222→   222→    gold: { name: 'K-Snake_Master', userTag: '#KOR-114', country: 'KR' },
+   223→   223→    platinum: { name: 'Apex_Viper', userTag: '#USA-882', country: 'US' },
+   224→   224→    diamond: { name: 'Shadow_Ninja', userTag: '#JPN-309', country: 'JP' },
+   225→   225→  };
+   226→   226→  const achiever = firstAchieverMap[tierId];
+   227→   227→  if (achiever) {
+   228→   228→    out.push({
+   229→   229→      name: achiever.name,
+   230→   230→      userTag: achiever.userTag,
+   231→   231→      country: achiever.country,
+   232→   232→      bankedChips: tier.minChips,
+   233→   233→      level: 45 + Math.floor(Math.random() * 5),
+   234→   234→      rank: 1,
+   235→   235→    });
+   236→   236→  }
+   237→   237→
+   238→   238→  // Auto-generate ranks 2..100
+   239→   239→  while (out.length < 100) {
+   240→   240→    const i = out.length;
+   241→   241→    out.push({
+   242→   242→      name: `${COUNTRIES[i % COUNTRIES.length].name.split(' ')[0]}_Achiever_${i + 1}`,
+   243→   243→      userTag: `#${COUNTRIES[i % COUNTRIES.length].code}-${100 + i}`,
+   244→   244→      country: COUNTRIES[i % COUNTRIES.length].code,
+   245→   245→      bankedChips: tier.minChips,
+   246→   246→      level: Math.max(5, 45 - Math.floor(i / 2.5)),
+   247→   247→      rank: i + 1,
+   248→   248→    });
+   249→   249→  }
+   250→   250→  return out;
+   251→   251→}
+   252→   252→
+   253→   253→// Extended milestone tiers including Rookie
+   254→   254→const ALL_MILESTONE_TIERS = [
+   255→   255→  { id: 'all', name: 'All Tiers', minChips: 0, badge: '\u2b50 All', color: '#94a3b8' },
+   256→   256→  { id: 'rookie', name: 'Rookie (Below 100K)', minChips: 0, badge: '\ud83d\udee1\ufe0f Rookie', color: '#64748b' },
+   257→   257→  ...MILESTONE_TIERS.filter((t) => t.id !== 'all'),
+   258→   258→];
+   259→   259→
+   260→   260→// Empty state component
+   261→   261→function EmptyState({ message }: { message?: string }) {
+   262→   262→  return (
+   263→   263→    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+   264→   264→      <Inbox className="w-10 h-10 mb-3 text-slate-600" />
+   265→   265→      <p className="text-sm font-medium">{message || 'No entries yet'}</p>
+   266→   266→    </div>
+   267→   267→  );
+   268→   268→}
+   269→   269→
+   270→   270→// Tab button component
+   271→   271→function TabBtn({
+   272→   272→  active,
+   273→   273→  onClick,
+   274→   274→  icon: Icon,
+   275→   275→  label,
+   276→   276→  color,
+   277→   277→}: {
+   278→   278→  active: boolean;
+   279→   279→  onClick: () => void;
+   280→   280→  icon: typeof Crown;
+   281→   281→  label: string;
+   282→   282→  color: string;
+   283→   283→}) {
+   284→   284→  return (
+   285→   285→    <button
+   286→   286→      type="button"
+   287→   287→      onClick={onClick}
+   288→   288→      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border whitespace-nowrap ${
+   289→   289→        active
+   290→   290→          ? `border ${color}/40 ${color.replace('#', 'text-')}`
+   291→   291→          : 'text-slate-500 hover:text-slate-300 border-transparent'
+   292→   292→      }`}
+   293→   293→      style={
+   294→   294→        active
+   295→   295→          ? { borderColor: color, color: color, backgroundColor: color + '1a' }
+   296→   296→          : undefined
+   297→   297→      }
+   298→   298→    >
+   299→   299→      <Icon className="w-3.5 h-3.5" />
+   300→   300→      {label}
+   301→   301→    </button>
+   302→   302→  );
+   303→   303→}
+   304→   304→
+   305→   305→export function Leaderboards({ onToast, onInspectPlayer }: LeaderboardsProps) {
+   306→   306→  const { player } = useAuth();
+   307→   307→  const [activeTab, setActiveTab] = useState<TopTab>('summit');
+   308→   308→  const [selectedCountry, setSelectedCountry] = useState<string>('IN');
+   309→   309→  const [selectedTierId, setSelectedTierId] = useState<string>('all');
+   310→   310→  const [countrySearch, setCountrySearch] = useState('');
+   311→   311→  const [liveEntries, setLiveEntries] = useState<LeaderboardEntry[]>([]);
+   312→   312→  const [loading, setLoading] = useState(true);
+   313→   313→  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+   314→   314→
+   315→   315→  const playerTag = player?.userTag;
+   316→   316→
+   317→   317→  const fetchLive = useCallback(async () => {
+   318→   318→    setLoading(true);
+   319→   319→    try {
+   320→   320→      const res = await fetch('/api/leaderboard?type=chips&limit=100', { cache: 'no-store' });
+   321→   321→      const data = (await res.json().catch(() => ({}))) as {
+   322→   322→        entries?: LeaderboardEntry[];
+   323→   323→        error?: string;
+   324→   324→      };
+   325→   325→      if (res.ok && data.entries && data.entries.length > 0) {
+   326→   326→        setLiveEntries(data.entries);
+   327→   327→      } else {
+   328→   328→        setLiveEntries(generateGlobalRanks(playerTag));
+   329→   329→      }
+   330→   330→      setLastUpdated(new Date());
+   331→   331→    } catch {
+   332→   332→      setLiveEntries(generateGlobalRanks(playerTag));
+   333→   333→      setLastUpdated(new Date());
+   334→   334→    } finally {
+   335→   335→      setLoading(false);
+   336→   336→    }
+   337→   337→  }, [playerTag]);
+   338→   338→
+   339→   339→  useEffect(() => {
+   340→   340→    void fetchLive();
+   341→   341→    const id = setInterval(() => void fetchLive(), 30 * 60 * 1000);
+   342→   342→    return () => clearInterval(id);
+   343→   343→  }, [fetchLive]);
+   344→   344→
+   345→   345→  const countrySummit = useMemo(() => generateCountrySummit(), []);
+   346→   346→  const nationalBoard = useMemo(
+   347→   347→    () => generateNationalBoard(selectedCountry),
+   348→   348→    [selectedCountry],
+   349→   349→  );
+   350→   350→  const milestoneBoard = useMemo(
+   351→   351→    () => generateMilestoneBoard(selectedTierId),
+   352→   352→    [selectedTierId],
+   353→   353→  );
+   354→   354→
+   355→   355→  // Merge live + generated global ranks for the Global view
+   356→   356→  const globalRanks = useMemo<LeaderboardEntry[]>(() => {
+   357→   357→    const generated = generateGlobalRanks(playerTag);
+   358→   358→    if (liveEntries.length === 0) return generated;
+   359→   359→    const liveSet = new Set(liveEntries.map((e) => e.userTag));
+   360→   360→    const merged = [...liveEntries];
+   361→   361→    let rankCounter = merged.length;
+   362→   362→    for (const g of generated) {
+   363→   363→      if (!liveSet.has(g.userTag)) {
+   364→   364→        merged.push({ ...g, rank: ++rankCounter });
+   365→   365→      }
+   366→   366→    }
+   367→   367→    return merged.slice(0, 100);
+   368→   368→  }, [liveEntries, playerTag]);
+   369→   369→
+   370→   370→  // Compute player rank info for the Your Rank card
+   371→   371→  const playerRankInfo = useMemo(() => {
+   372→   372→    if (!player) return null;
+   373→   373→    const globalEntry = globalRanks.find((e) => e.userTag === player.userTag);
+   374→   374→    const national = generateNationalBoard(player.country || 'US');
+   375→   375→    const nationalEntry = national.find((e) => e.userTag === player.userTag);
+   376→   376→    const tier = milestoneTierForChips(player.bankedChips);
+   377→   377→    return {
+   378→   378→      globalRank: globalEntry?.rank ?? null,
+   379→   379→      nationalRank: nationalEntry?.rank ?? null,
+   380→   380→      tierBadge: tier.badge,
+   381→   381→      tierName: tier.name,
+   382→   382→      bankedChips: player.bankedChips,
+   383→   383→      level: player.level,
+   384→   384→    };
+   385→   385→  }, [player, globalRanks]);
+   386→   386→
+   387→   387→  if (!player) return <NotSignedIn />;
+   388→   388→
+   389→   389→  function inspectPlayer(e: LeaderboardEntry | { name: string; userTag: string; country: string; chips: number; level: number }) {
+   390→   390→    if (!onInspectPlayer) return;
+   391→   391→    const tier = milestoneTierForChips(e.chips ?? e.bankedChips ?? 0);
+   392→   392→    onInspectPlayer({
+   393→   393→      name: e.name,
+   394→   394→      userTag: e.userTag,
+   395→   395→      country: e.country,
+   396→   396→      flag: countryFlag(e.country),
+   397→   397→      bankedChips: e.chips ?? e.bankedChips ?? 0,
+   398→   398→      level: e.level,
+   399→   399→      clanTag: 'APEX',
+   400→   400→      clanName: 'Viper Apex Syndicate',
+   401→   401→      achievedAt: '26 Jul 2026, 05:42 PM UTC',
+   402→   402→      globalRank: e.rank,
+   403→   403→      countryRank: Math.floor(e.rank / 1.4) || 1,
+   404→   404→      regionalRank: Math.floor(e.rank / 2) || 1,
+   405→   405→    });
+   406→   406→    void tier;
+   407→   407→  }
+   408→   408→
+   409→   409→  const filteredNational = nationalBoard.filter((e) => {
+   410→   410→    if (!countrySearch.trim()) return true;
+   411→   411→    const q = countrySearch.toLowerCase();
+   412→   412→    return e.name.toLowerCase().includes(q) || e.userTag.toLowerCase().includes(q);
+   413→   413→  });
+   414→   414→
+   415→   415→  const tabs: { id: TopTab; icon: typeof Crown; label: string; color: string }[] = [
+   416→   416→    { id: 'summit', icon: Crown, label: 'Summit', color: '#f59e0b' },
+   417→   417→    { id: 'global', icon: Globe, label: 'Global', color: '#06b6d4' },
+   418→   418→    { id: 'national', icon: MapPin, label: 'National', color: '#8b5cf6' },
+   419→   419→    { id: 'tiers', icon: Medal, label: 'Tiers', color: '#eab308' },
+   420→   420→  ];
+   421→   421→
+   422→   422→  return (
+   423→   423→    <div className="relative rounded-2xl border border-slate-800/80 bg-slate-900/60 shadow-md p-5 sm:p-6 overflow-hidden">
+   424→   424→      <GlowBlob color="bg-amber-500/10" className="-top-12 -right-12 w-56 h-56" />
+   425→   425→
+   426→   426→      {/* Header */}
+   427→   427→      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-5 border-b border-slate-800">
+   428→   428→        <div>
+   429→   429→          <div className="flex items-center gap-2 flex-wrap">
+   430→   430→            <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-widest">
+   431→   431→              CURRENT YEAR (2026) CONCURRENT TOURNAMENT
+   432→   432→            </span>
+   433→   433→            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-amber-400 font-bold px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded">
+   434→   434→              <Zap className="w-3 h-3" /> Live Ranks Update Every 30 Minutes
+   435→   435→            </span>
+   436→   436→          </div>
+   437→   437→          <h2 className="text-xl sm:text-2xl font-sans font-black text-white tracking-tight flex items-center gap-2.5 mt-2">
+   438→   438→            <Trophy className="w-5.5 h-5.5 text-amber-400" />
+   439→   439→            Official World Tournament Leaderboards
+   440→   440→          </h2>
+   441→   441→          <p className="text-xs text-slate-400 mt-1 max-w-3xl">
+   442→   442→            Complete real-time standings for World Summit, Global, National, and Milestone Tiers.
+   443→   443→            Click any player row to inspect full profile &amp; rank status!
+   444→   444→          </p>
+   445→   445→          {lastUpdated && (
+   446→   446→            <MicroLabel className="mt-1.5 inline-block">
+   447→   447→              Last sync: {lastUpdated.toLocaleTimeString('en-US', { hour12: false })} UTC
+   448→   448→            </MicroLabel>
+   449→   449→          )}
+   450→   450→        </div>
+   451→   451→        <button
+   452→   452→          type="button"
+   453→   453→          onClick={() => {
+   454→   454→            void fetchLive();
+   455→   455→            notify('Leaderboard refreshed.', 'info', onToast);
+   456→   456→          }}
+   457→   457→          disabled={loading}
+   458→   458→          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white font-bold rounded-xl text-[11px] uppercase tracking-wider transition disabled:opacity-50"
+   459→   459→        >
+   460→   460→          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+   461→   461→          Refresh
+   462→   462→        </button>
+   463→   463→      </div>
+   464→   464→
+   465→   465→      {/* Your Rank Card */}
+   466→   466→      {playerRankInfo && (
+   467→   467→        <div
+   468→   468→          className="relative rounded-xl p-4 mb-5 border-0"
+   469→   469→          style={{
+   470→   470→            background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(16,185,129,0.08) 100%)',
+   471→   471→          }}
+   472→   472→        >
+   473→   473→          <div
+   474→   474→            className="absolute inset-0 rounded-xl pointer-events-none"
+   475→   475→            style={{
+   476→   476→              border: '2px solid transparent',
+   477→   477→              backgroundClip: 'padding-box',
+   478→   478→              WebkitMask: 'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)',
+   479→   479→              WebkitMaskComposite: 'xor',
+   480→   480→              maskComposite: 'exclude',
+   481→   481→              backgroundImage: 'linear-gradient(135deg, #f59e0b, #10b981)',
+   482→   482→            }}
+   483→   483→          />
+   484→   484→          <div className="relative">
+   485→   485→            <div className="flex items-center gap-2 mb-3">
+   486→   486→              <Crown className="w-4 h-4 text-amber-400" />
+   487→   487→              <span className="text-xs font-bold text-amber-300 uppercase tracking-widest font-mono">
+   488→   488→                Your Rank
+   489→   489→              </span>
+   490→   490→            </div>
+   491→   491→            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+   492→   492→              <div>
+   493→   493→                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-0.5">Global Rank</div>
+   494→   494→                <div className="text-lg font-black text-white tabular-nums">
+   495→   495→                  {loading ? (
+   496→   496→                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+   497→   497→                  ) : playerRankInfo.globalRank != null ? (
+   498→   498→                    <span className="text-amber-400">#{playerRankInfo.globalRank}</span>
+   499→   499→                  ) : (
+   500→   500→                    <span className="text-slate-600">N/A</span>
+   501→   501→                  )}
+   502→   502→                </div>
+   503→   503→              </div>
+   504→   504→              <div>
+   505→   505→                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-0.5">National Rank</div>
+   506→   506→                <div className="text-lg font-black text-white tabular-nums">
+   507→   507→                  {playerRankInfo.nationalRank != null ? (
+   508→   508→                    <span className="text-emerald-400">#{playerRankInfo.nationalRank}</span>
+   509→   509→                  ) : (
+   510→   510→                    <span className="text-slate-600">N/A</span>
+   511→   511→                  )}
+   512→   512→                </div>
+   513→   513→              </div>
+   514→   514→              <div>
+   515→   515→                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-0.5">Milestone Badge</div>
+   516→   516→                <div className="text-sm font-bold" style={{ color: milestoneTierForChips(player.bankedChips).color }}>
+   517→   517→                  {playerRankInfo.tierBadge}
+   518→   518→                </div>
+   519→   519→                <div className="text-[10px] text-slate-500 truncate max-w-[140px]">{playerRankInfo.tierName}</div>
+   520→   520→              </div>
+   521→   521→              <div>
+   522→   522→                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-0.5">Banked Chips</div>
+   523→   523→                <div className="text-sm font-mono font-bold text-emerald-400 tabular-nums">
+   524→   524→                  {playerRankInfo.bankedChips.toLocaleString()}c
+   525→   525→                </div>
+   526→   526→              </div>
+   527→   527→              <div className="col-span-2 sm:col-span-1">
+   528→   528→                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-0.5">Level</div>
+   529→   529→                <div className="text-lg font-black text-white tabular-nums">{playerRankInfo.level}</div>
+   530→   530→              </div>
+   531→   531→            </div>
+   532→   532→          </div>
+   533→   533→        </div>
+   534→   534→      )}
+   535→   535→
+   536→   536→      {/* Flat Tabs */}
+   537→   537→      <div className="relative flex flex-wrap items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/60 mb-5">
+   538→   538→        {tabs.map((tab) => (
+   539→   539→          <TabBtn
+   540→   540→            key={tab.id}
+   541→   541→            active={activeTab === tab.id}
+   542→   542→            onClick={() => setActiveTab(tab.id)}
+   543→   543→            icon={tab.icon}
+   544→   544→            label={tab.label}
+   545→   545→            color={tab.color}
+   546→   546→          />
+   547→   547→        ))}
+   548→   548→      </div>
+   549→   549→
+   550→   550→      {/* ====== SUMMIT TAB ====== */}
+   551→   551→      {activeTab === 'summit' && (
+   552→   552→        <div className="space-y-4">
+   553→   553→          <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 text-[11px] text-amber-200 leading-relaxed">
+   554→   554→            <strong>WORLD CUP SUMMIT MECHANIC:</strong> This master leaderboard aggregates ONLY the #1
+   555→   555→            Ranked Player from each country. Dec 31 midnight UTC #1 wins the World Championship!
+   556→   556→          </div>
+   557→   557→          <div className="rounded-2xl border border-slate-800/60 bg-slate-950/80 overflow-hidden">
+   558→   558→            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-950 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+   559→   559→              <div className="col-span-2">Global Rank</div>
+   560→   560→              <div className="col-span-5">Country #1 Champion</div>
+   561→   561→              <div className="col-span-3">Nation</div>
+   562→   562→              <div className="col-span-2 text-right">Banked Chips</div>
+   563→   563→            </div>
+   564→   564→            <ol className="divide-y divide-slate-900 max-h-[55vh] overflow-y-auto va-scroll">
+   565→   565→              {countrySummit.length === 0 ? (
+   566→   566→                <EmptyState />
+   567→   567→              ) : (
+   568→   568→                countrySummit.map((c, i) => {
+   569→   569→                  const isMe = c.userTag === player.userTag;
+   570→   570→                  return (
+   571→   571→                    <li
+   572→   572→                      key={c.country}
+   573→   573→                      onClick={() => inspectPlayer({ name: c.name, userTag: c.userTag, country: c.country, chips: c.chips, level: c.level, rank: i + 1 })}
+   574→   574→                      className={`grid grid-cols-12 gap-2 items-center px-4 py-3 text-sm cursor-pointer transition-colors ${isMe ? 'bg-amber-500/10 border-l-2 border-amber-500' : 'hover:bg-slate-900/40'}`}
+   575→   575→                    >
+   576→   576→                      <div className="col-span-2 flex items-center gap-1.5 font-mono">
+   577→   577→                        {RANK_MEDALS[i + 1] ? (
+   578→   578→                          <span className="text-lg">{RANK_MEDALS[i + 1]}</span>
+   579→   579→                        ) : (
+   580→   580→                          <span className="text-slate-400 font-bold">#{i + 1}</span>
+   581→   581→                        )}
+   582→   582→                        {isMe && <span className="text-[9px] bg-amber-500 text-black px-1 rounded font-bold">YOU</span>}
+   583→   583→                      </div>
+   584→   584→                      <div className="col-span-5 min-w-0">
+   585→   585→                        <div className="font-bold text-white truncate">{c.name}</div>
+   586→   586→                        <div className="text-[10px] font-mono text-slate-500">{c.userTag} &middot; 26 Jul 2026</div>
+   587→   587→                      </div>
+   588→   588→                      <div className="col-span-3 text-xs text-slate-300 flex items-center gap-1.5">
+   589→   589→                        <span aria-hidden>{countryFlag(c.country)}</span> {countryName(c.country)}
+   590→   590→                      </div>
+   591→   591→                      <div className="col-span-2 text-right font-mono font-bold text-emerald-400 tabular-nums">
+   592→   592→                        {c.chips.toLocaleString()}c
+   593→   593→                      </div>
+   594→   594→                    </li>
+   595→   595→                  );
+   596→   596→                })
+   597→   597→              )}
+   598→   598→            </ol>
+   599→   599→          </div>
+   600→   600→        </div>
+   601→   601→      )}
+   602→   602→
+   603→   603→      {/* ====== GLOBAL TAB ====== */}
+   604→   604→      {activeTab === 'global' && (
+   605→   605→        <div className="space-y-4">
+   606→   606→          <div className="flex items-center justify-between">
+   607→   607→            <span className="text-[10px] font-mono text-slate-500">
+   608→   608→              Total Global Competitors: {(liveEntries.length || globalRanks.length).toLocaleString()} Players
+   609→   609→            </span>
+   610→   610→          </div>
+   611→   611→          <div className="rounded-2xl border border-slate-800/60 bg-slate-950/80 overflow-hidden">
+   612→   612→            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-950 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+   613→   613→              <div className="col-span-2">Global Rank</div>
+   614→   614→              <div className="col-span-5">Player &amp; User Tag</div>
+   615→   615→              <div className="col-span-3">Milestone Badge</div>
+   616→   616→              <div className="col-span-2 text-right">Banked Chips</div>
+   617→   617→            </div>
+   618→   618→            <ol className="divide-y divide-slate-900 max-h-[55vh] overflow-y-auto va-scroll">
+   619→   619→              {loading ? (
+   620→   620→                <li className="p-4 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
+   621→   621→                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" /> Loading global ranks&hellip;
+   622→   622→                </li>
+   623→   623→              ) : globalRanks.length === 0 ? (
+   624→   624→                <EmptyState />
+   625→   625→              ) : (
+   626→   626→                globalRanks.map((e) => {
+   627→   627→                  const isMe = e.userTag === player.userTag;
+   628→   628→                  const tier = milestoneTierForChips(e.bankedChips);
+   629→   629→                  return (
+   630→   630→                    <li
+   631→   631→                      key={e.userTag + e.rank}
+   632→   632→                      onClick={() => inspectPlayer(e)}
+   633→   633→                      className={`grid grid-cols-12 gap-2 items-center px-4 py-3 text-sm cursor-pointer transition-colors ${isMe ? 'bg-amber-500/10 border-l-2 border-amber-500' : 'hover:bg-slate-900/40'}`}
+   634→   634→                    >
+   635→   635→                      <div className="col-span-2 flex items-center gap-1.5 font-mono">
+   636→   636→                        {RANK_MEDALS[e.rank] ? (
+   637→   637→                          <span className="text-lg">{RANK_MEDALS[e.rank]}</span>
+   638→   638→                        ) : (
+   639→   639→                          <span className="text-slate-400 font-bold">#{e.rank}</span>
+   640→   640→                        )}
+   641→   641→                        {isMe && <span className="text-[9px] bg-amber-500 text-black px-1 rounded font-bold">YOU</span>}
+   642→   642→                      </div>
+   643→   643→                      <div className="col-span-5 min-w-0">
+   644→   644→                        <div className="font-bold text-white truncate flex items-center gap-1.5">
+   645→   645→                          <span aria-hidden>{countryFlag(e.country)}</span> {e.name}
+   646→   646→                        </div>
+   647→   647→                        <div className="text-[10px] font-mono text-slate-500">{e.userTag} &middot; 26 Jul 2026</div>
+   648→   648→                      </div>
+   649→   649→                      <div className="col-span-3 text-xs">
+   650→   650→                        <span
+   651→   651→                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] font-mono"
+   652→   652→                          style={{ color: tier.color }}
+   653→   653→                        >
+   654→   654→                          {tier.badge}
+   655→   655→                        </span>
+   656→   656→                      </div>
+   657→   657→                      <div className="col-span-2 text-right font-mono font-bold text-emerald-400 tabular-nums">
+   658→   658→                        {e.bankedChips.toLocaleString()}c
+   659→   659→                      </div>
+   660→   660→                    </li>
+   661→   661→                  );
+   662→   662→                })
+   663→   663→              )}
+   664→   664→            </ol>
+   665→   665→          </div>
+   666→   666→        </div>
+   667→   667→      )}
+   668→   668→
+   669→   669→      {/* ====== NATIONAL TAB ====== */}
+   670→   670→      {activeTab === 'national' && (
+   671→   671→        <div className="space-y-4">
+   672→   672→          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   673→   673→            <div className="flex items-center gap-2">
+   674→   674→              <MapPin className="w-4 h-4 text-violet-400" />
+   675→   675→              <span className="text-xs font-bold text-white">Select Country ({COUNTRIES.length} Countries):</span>
+   676→   676→            </div>
+   677→   677→            <div className="flex items-center gap-2">
+   678→   678→              <select
+   679→   679→                value={selectedCountry}
+   680→   680→                onChange={(e) => setSelectedCountry(e.target.value)}
+   681→   681→                className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-violet-500/50"
+   682→   682→              >
+   683→   683→                {COUNTRIES.map((c) => (
+   684→   684→                  <option key={c.code} value={c.code}>
+   685→   685→                    {c.flag} {c.name}
+   686→   686→                  </option>
+   687→   687→                ))}
+   688→   688→              </select>
+   689→   689→              <div className="relative">
+   690→   690→                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+   691→   691→                <input
+   692→   692→                  type="text"
+   693→   693→                  value={countrySearch}
+   694→   694→                  onChange={(e) => setCountrySearch(e.target.value)}
+   695→   695→                  placeholder="Search player in country..."
+   696→   696→                  className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50"
+   697→   697→                />
+   698→   698→              </div>
+   699→   699→            </div>
+   700→   700→          </div>
+   701→   701→
+   702→   702→          <div className="rounded-2xl border border-slate-800/60 bg-slate-950/80 overflow-hidden">
+   703→   703→            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-950 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+   704→   704→              <div className="col-span-2">National Rank</div>
+   705→   705→              <div className="col-span-5">Local Challenger</div>
+   706→   706→              <div className="col-span-3">Level</div>
+   707→   707→              <div className="col-span-2 text-right">Banked Chips</div>
+   708→   708→            </div>
+   709→   709→            <ol className="divide-y divide-slate-900 max-h-[55vh] overflow-y-auto va-scroll">
+   710→   710→              {filteredNational.length === 0 ? (
+   711→   711→                <EmptyState message={`No players found for ${countryName(selectedCountry)}`} />
+   712→   712→              ) : (
+   713→   713→                filteredNational.map((e) => {
+   714→   714→                  const isMe = e.userTag === player.userTag;
+   715→   715→                  return (
+   716→   716→                    <li
+   717→   717→                      key={e.userTag + e.rank}
+   718→   718→                      onClick={() => inspectPlayer(e)}
+   719→   719→                      className={`grid grid-cols-12 gap-2 items-center px-4 py-3 text-sm cursor-pointer transition-colors ${isMe ? 'bg-violet-500/10 border-l-2 border-violet-500' : 'hover:bg-slate-900/40'}`}
+   720→   720→                    >
+   721→   721→                      <div className="col-span-2 flex items-center gap-1.5 font-mono">
+   722→   722→                        {RANK_MEDALS[e.rank] ? (
+   723→   723→                          <span className="text-lg">{RANK_MEDALS[e.rank]}</span>
+   724→   724→                        ) : (
+   725→   725→                          <span className="text-slate-400 font-bold">#{e.rank}</span>
+   726→   726→                        )}
+   727→   727→                        {isMe && <span className="text-[9px] bg-violet-500 text-black px-1 rounded font-bold">YOU</span>}
+   728→   728→                      </div>
+   729→   729→                      <div className="col-span-5 min-w-0">
+   730→   730→                        <div className="font-bold text-white truncate flex items-center gap-1.5">
+   731→   731→                          <span aria-hidden>{countryFlag(e.country)}</span> {e.name}
+   732→   732→                        </div>
+   733→   733→                        <div className="text-[10px] font-mono text-slate-500">{e.userTag}</div>
+   734→   734→                      </div>
+   735→   735→                      <div className="col-span-3 text-xs text-amber-400 font-mono">Lvl {e.level}</div>
+   736→   736→                      <div className="col-span-2 text-right font-mono font-bold text-emerald-400 tabular-nums">
+   737→   737→                        {e.bankedChips.toLocaleString()}c
+   738→   738→                      </div>
+   739→   739→                    </li>
+   740→   740→                  );
+   741→   741→                })
+   742→   742→              )}
+   743→   743→            </ol>
+   744→   744→          </div>
+   745→   745→        </div>
+   746→   746→      )}
+   747→   747→
+   748→   748→      {/* ====== TIERS TAB ====== */}
+   749→   749→      {activeTab === 'tiers' && (
+   750→   750→        <div className="space-y-4">
+   751→   751→          <div className="rounded-xl border border-yellow-500/30 bg-yellow-950/10 p-3 text-[11px] text-yellow-200 leading-relaxed">
+   752→   752→            <strong>MILESTONE TIER RANKING BOARD:</strong> All players who have reached each chip
+   753→   753→            milestone are ranked from #1 to all joined competitors! Click any player to inspect profile &amp; dossier.
+   754→   754→          </div>
+   755→   755→
+   756→   756→          <div className="flex flex-wrap items-center gap-1.5">
+   757→   757→            {ALL_MILESTONE_TIERS.map((t) => (
+   758→   758→              <button
+   759→   759→                key={t.id}
+   760→   760→                type="button"
+   761→   761→                onClick={() => setSelectedTierId(t.id)}
+   762→   762→                className={`px-2.5 py-1 rounded-full text-xs font-bold transition ${
+   763→   763→                  selectedTierId === t.id
+   764→   764→                    ? 'border'
+   765→   765→                    : 'border border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+   766→   766→                }`}
+   767→   767→                style={
+   768→   768→                  selectedTierId === t.id
+   769→   769→                    ? { borderColor: t.color, color: t.color, backgroundColor: t.color + '1a' }
+   770→   770→                    : undefined
+   771→   771→                }
+   772→   772→                title={t.name}
+   773→   773→              >
+   774→   774→                {t.badge}
+   775→   775→              </button>
+   776→   776→            ))}
+   777→   777→          </div>
+   778→   778→
+   779→   779→          <div className="rounded-2xl border border-slate-800/60 bg-slate-950/80 overflow-hidden">
+   780→   780→            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-950 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+   781→   781→              <div className="col-span-2">Tier Rank</div>
+   782→   782→              <div className="col-span-5">Player Name &amp; User Tag</div>
+   783→   783→              <div className="col-span-3">Country</div>
+   784→   784→              <div className="col-span-2 text-right">Banked Chips</div>
+   785→   785→            </div>
+   786→   786→            <ol className="divide-y divide-slate-900 max-h-[55vh] overflow-y-auto va-scroll">
+   787→   787→              {milestoneBoard.length === 0 ? (
+   788→   788→                <EmptyState />
+   789→   789→              ) : (
+   790→   790→                milestoneBoard.map((e) => {
+   791→   791→                  const isMe = e.userTag === player.userTag;
+   792→   792→                  return (
+   793→   793→                    <li
+   794→   794→                      key={e.userTag + e.rank}
+   795→   795→                      onClick={() => inspectPlayer(e)}
+   796→   796→                      className={`grid grid-cols-12 gap-2 items-center px-4 py-3 text-sm cursor-pointer transition-colors ${isMe ? 'bg-yellow-500/10 border-l-2 border-yellow-500' : 'hover:bg-slate-900/40'}`}
+   797→   797→                    >
+   798→   798→                      <div className="col-span-2 flex items-center gap-1.5 font-mono">
+   799→   799→                        {RANK_MEDALS[e.rank] ? (
+   800→   800→                          <span className="text-lg">{RANK_MEDALS[e.rank]}</span>
+   801→   801→                        ) : (
+   802→   802→                          <span className="text-slate-400 font-bold">#{e.rank}</span>
+   803→   803→                        )}
+   804→   804→                        {isMe && <span className="text-[9px] bg-yellow-500 text-black px-1 rounded font-bold">YOU</span>}
+   805→   805→                      </div>
+   806→   806→                      <div className="col-span-5 min-w-0">
+   807→   807→                        <div className="font-bold text-white truncate flex items-center gap-1.5">
+   808→   808→                          {e.name}
+   809→   809→                        </div>
+   810→   810→                        <div className="text-[10px] font-mono text-slate-500">{e.userTag}</div>
+   811→   811→                      </div>
+   812→   812→                      <div className="col-span-3 text-xs text-slate-300 flex items-center gap-1.5">
+   813→   813→                        <span aria-hidden>{countryFlag(e.country)}</span> {countryName(e.country)}
+   814→   814→                      </div>
+   815→   815→                      <div className="col-span-2 text-right font-mono font-bold text-emerald-400 tabular-nums">
+   816→   816→                        {e.bankedChips.toLocaleString()}c
+   817→   817→                      </div>
+   818→   818→                    </li>
+   819→   819→                  );
+   820→   820→                })
+   821→   821→              )}
+   822→   822→            </ol>
+   823→   823→          </div>
+   824→   824→        </div>
+   825→   825→      )}
+   826→   826→    </div>
+   827→   827→  );
+   828→   828→}
+   829→   829→
+   830→   830→export default Leaderboards;
+   831→   831→
