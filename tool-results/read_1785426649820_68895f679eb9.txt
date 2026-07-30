@@ -1,0 +1,718 @@
+    50→   134→                  <li>Guest accounts can <strong>upgrade to registered</strong> later (in Profile panel)</li>
+    51→   135→                  <li>All progress carries over when upgrading</li>
+    52→   136→                </ul>
+    53→   137→              </div>
+    54→   138→            </div>
+    55→   139→            <InfoCard title="Chip Economy Basics" accent="text-amber-300">
+    56→   140→              <ul className="list-disc pl-4 space-y-0.5">
+    57→   141→                <li>Chips are <strong>free in-game currency</strong> — no real-world value</li>
+    58→   142→                <li>Start with 150 chips. Earn more by: extracting from arenas, daily login rewards, chip store, or gifting from friends (+25 per friend)</li>
+    59→   143→                <li>Buy into arenas costs chips. If you die, you lose your carried chips. If you extract, you bank them!</li>
+    60→   144→                <li>Need more chips? Visit the Chip Store (free packs) or claim Daily Rewards</li>
+    61→   145→              </ul>
+    62→   146→            </InfoCard>
+    63→   147→            <InfoCard title="🔑 Password Recovery (Forgot Password)" accent="text-cyan-300">
+    64→   148→              <ul className="list-disc pl-4 space-y-0.5">
+    65→   149→                <li>On the Login page, click <strong>&quot;Forgot Password?&quot;</strong></li>
+    66→   150→                <li>Enter your <strong>registered email</strong> and your <strong>4-digit Security PIN</strong></li>
+    67→   151→                <li>Set a new password (min 6 chars) and confirm it</li>
+    68→   152→                <li>Your password is updated instantly — no email verification needed</li>
+    69→   153→                <li><strong>Important:</strong> If you didn&apos;t set a Security PIN during registration, password recovery is not available. Contact support or set a PIN in Profile → Security Settings before you forget your password!</li>
+    70→   154→              </ul>
+    71→   155→            </InfoCard>
+    72→   156→            <InfoCard title="🔒 Managing Your Security PIN" accent="text-emerald-300">
+    73→   157→              <ul className="list-disc pl-4 space-y-0.5">
+    74→   158→                <li>Your PIN is set during <strong>registration</strong> (optional but recommended)</li>
+    75→   159→                <li>Change or set your PIN anytime in <strong>Profile → Security Settings</strong></li>
+    76→   160→                <li>If you already have a PIN, you must enter your current PIN before setting a new one</li>
+    77→   161→                <li>The PIN is your <strong>only recovery method</strong> — memorize it or store it securely</li>
+    78→   162→                <li>Guest accounts cannot set a PIN (they have no password to recover)</li>
+    79→   163→              </ul>
+    80→   164→            </InfoCard>
+    81→   165→          </Section>
+    82→   166→
+    83→   167→          {/* ================================================================= */}
+    84→   168→          {/* 1. CONTROLS */}
+    85→   169→          {/* ================================================================= */}
+    86→   170→          <Section icon={<Gamepad className="w-4 h-4" />} title="1. CONTROLS" accent="text-cyan-400">
+    87→   171→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    88→   172→              <InfoCard title="🖱️ Mouse / Touch" accent="text-cyan-300">
+    89→   173→                Move cursor to steer. Left-click or hold for Boost. On mobile, drag the joystick — push far for boost.
+    90→   174→              </InfoCard>
+    91→   175→              <InfoCard title="⌨️ Keyboard" accent="text-amber-300">
+    92→   176→                WASD or Arrow Keys to steer. Hold Space/Shift for Boost. Hold E for Extract.
+    93→   177→              </InfoCard>
+    94→   178→            </div>
+    95→   179→          </Section>
+    96→   180→
+    97→   181→          {/* ================================================================= */}
+    98→   182→          {/* 2. ONLINE vs OFFLINE */}
+    99→   183→          {/* ================================================================= */}
+   100→   184→          <Section icon={<Users className="w-4 h-4" />} title="2. ONLINE MULTIPLAYER VS. OFFLINE PRACTICE" accent="text-emerald-400">
+   101→   185→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   102→   186→              <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl space-y-1.5">
+   103→   187→                <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+   104→   188→                  <Users className="w-3.5 h-3.5" /> Online Arena (High Stakes)
+   105→   189→                </span>
+   106→   190→                <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
+   107→   191→                  <li><strong>Chip Buy-In:</strong> Deducts buy-in from your banked vault into carried match chips.</li>
+   108→   192→                  <li><strong>Real Players:</strong> Live PvP with real opponents and leaderboard rankings.</li>
+   109→   193→                  <li><strong>Graduated Commission:</strong> 0% if ≤3 real players, 35% if ≥4. Extract anytime.</li>
+   110→   194→                  <li><strong>Full Death Penalty:</strong> On death, your carried chips transform into 10 stars at your last position for others to collect.</li>
+   111→   195→                  <li><strong>Star Chips:</strong> Golden stars dropped when real players die. Each star = player&apos;s carried chips ÷ 10. Collect to increase your carried chips.</li>
+   112→   196→                  <li><strong>XP:</strong> Earned on successful extraction only.</li>
+   113→   197→                  <li><strong>Map:</strong> Circular boundary that breathes. Stay inside!</li>
+   114→   198→                  <li><strong>Bots:</strong> 30 bots per tier. Self-destruct at score≥100. Bots never drop or collect stars.</li>
+   115→   199→                </ul>
+   116→   200→              </div>
+   117→   201→
+   118→   202→              <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl space-y-1.5">
+   119→   203→                <span className="font-bold text-amber-300 flex items-center gap-1.5 text-xs">
+   120→   204→                  <Target className="w-3.5 h-3.5" /> Offline Practice (Risk-Free)
+   121→   205→                </span>
+   122→   206→                <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
+   123→   207→                  <li><strong>100% FREE:</strong> Zero chip cost. No buy-in.</li>
+   124→   208→                  <li><strong>AI Bots:</strong> 1,000 AI bots of varied sizes.</li>
+   125→   209→                  <li><strong>No Chips / Stars / XP:</strong> Score-based leaderboard (body length), no chip economy</li>
+   126→   210→                  <li><strong>Infinite Map:</strong> No boundaries, no wall death.</li>
+   127→   211→                  <li><strong>No Bot Self-Destruct:</strong> Bots just harvest and dodge.</li>
+   128→   212→                  <li><strong>Ideal for Warmups:</strong> Practice without pressure.</li>
+   129→   213→                </ul>
+   130→   214→              </div>
+   131→   215→            </div>
+   132→   216→
+   133→   217→            <InfoCard title="🏆 Arena Leaderboard: Online vs Offline" accent="text-yellow-300">
+   134→   218→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+   135→   219→                <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-2.5 space-y-1">
+   136→   220→                  <span className="font-bold text-emerald-300 text-[11px]">Online Arena Leaderboard</span>
+   137→   221→                  <ul className="list-disc pl-4 space-y-0.5 text-slate-400 text-[11px]">
+   138→   222→                    <li><strong>Who appears:</strong> Real players only (no bots)</li>
+   139→   223→                    <li><strong>Sorted by:</strong> Carried Chips (highest first)</li>
+   140→   224→                    <li><strong>Value shown:</strong> Carried chips in green (e.g., &quot;100c&quot;)</li>
+   141→   225→                    <li><strong>Your entry:</strong> Highlighted with indigo background + &quot;YOU&quot; badge</li>
+   142→   226→                    <li><strong>Country flags:</strong> ✅ Shown next to each player name</li>
+   143→   227→                    <li><strong>Ranking format:</strong> &quot;#X of Y&quot; (e.g., &quot;#1 of 3&quot;)</li>
+   144→   228→                    <li><strong>Empty state:</strong> Shows &quot;No real players yet.&quot;</li>
+   145→   229→                  </ul>
+   146→   230→                </div>
+   147→   231→                <div className="bg-amber-950/20 border border-amber-500/20 rounded-lg p-2.5 space-y-1">
+   148→   232→                  <span className="font-bold text-amber-300 text-[11px]">Offline Practice Leaderboard</span>
+   149→   233→                  <ul className="list-disc pl-4 space-y-0.5 text-slate-400 text-[11px]">
+   150→   234→                    <li><strong>Who appears:</strong> You + nearby active bots (top 10)</li>
+   151→   235→                    <li><strong>Sorted by:</strong> Score / body length (highest first)</li>
+   152→   236→                    <li><strong>Value shown:</strong> Score in indigo (e.g., &quot;42&quot;)</li>
+   153→   237→                    <li><strong>Your entry:</strong> Highlighted with green background</li>
+   154→   238→                    <li><strong>Country flags:</strong> ❌ Not shown</li>
+   155→   239→                    <li><strong>Ranking format:</strong> &quot;#X&quot; only (e.g., &quot;#31&quot;)</li>
+   156→   240→                    <li><strong>Always populated:</strong> Player + bots always visible</li>
+   157→   241→                  </ul>
+   158→   242→                </div>
+   159→   243→              </div>
+   160→   244→            </InfoCard>
+   161→   245→          </Section>
+   162→   246→
+   163→   247→          {/* ================================================================= */}
+   164→   248→          {/* ARENA TIERS REFERENCE TABLE */}
+   165→   249→          {/* ================================================================= */}
+   166→   250→          <InfoCard title="⚔️ Arena Tiers — 30 Competitive Tiers (10c → 1B)" accent="text-indigo-300">
+   167→   251→            <div className="overflow-x-auto mt-1">
+   168→   252→              <table className="w-full text-[10px] border-collapse">
+   169→   253→                <thead>
+   170→   254→                  <tr className="text-slate-400 border-b border-slate-800">
+   171→   255→                    <th className="text-left py-1 pr-2">#</th>
+   172→   256→                    <th className="text-left py-1 pr-2">Tier</th>
+   173→   257→                    <th className="text-left py-1 pr-2">Buy-In</th>
+   174→   258→                    <th className="text-left py-1 pr-2">Bots</th>
+   175→   259→                    <th className="text-left py-1 pr-2">XP Multi</th>
+   176→   260→                    <th className="text-left py-1">Difficulty</th>
+   177→   261→                  </tr>
+   178→   262→                </thead>
+   179→   263→                <tbody className="text-slate-300">
+   180→   264→                  {ARENA_TIERS.map((tier, i, arr) => (
+   181→   265→                    <tr key={tier.id} className={i < arr.length - 1 ? 'border-b border-slate-900' : ''}>
+   182→   266→                      <td className="py-1 pr-2 font-bold" style={{ color: tier.accentColor }}>#{i + 1}</td>
+   183→   267→                      <td className="py-1 pr-2 font-bold" style={{ color: tier.accentColor }}>{tier.name}</td>
+   184→   268→                      <td className="py-1 pr-2">{fmtShort(tier.buyIn)}</td>
+   185→   269→                      <td className="py-1 pr-2">{tier.botsCount}</td>
+   186→   270→                      <td className="py-1 pr-2 text-indigo-300">x{tier.rewardMultiplier}</td>
+   187→   271→                      <td className="py-1">{tier.difficulty}</td>
+   188→   272→                    </tr>
+   189→   273→                  ))}
+   190→   274→                </tbody>
+   191→   275→              </table>
+   192→   276→            </div>
+   193→   277→          </InfoCard>
+   194→   278→
+   195→   279→          <InfoCard title="🎯 Practice Tiers (3 Free Tiers — 1,000 Bots Each)" accent="text-amber-300">
+   196→   280→            <div className="overflow-x-auto mt-1">
+   197→   281→              <table className="w-full text-[10px] border-collapse">
+   198→   282→                <thead>
+   199→   283→                  <tr className="text-slate-400 border-b border-slate-800">
+   200→   284→                    <th className="text-left py-1 pr-2">Tier</th>
+   201→   285→                    <th className="text-left py-1 pr-2">Buy-In</th>
+   202→   286→                    <th className="text-left py-1 pr-2">Bots</th>
+   203→   287→                    <th className="text-left py-1 pr-2">XP Multi</th>
+   204→   288→                    <th className="text-left py-1">Difficulty</th>
+   205→   289→                  </tr>
+   206→   290→                </thead>
+   207→   291→                <tbody className="text-slate-300">
+   208→   292→                  {PRACTICE_TIERS.map((tier, i, arr) => (
+   209→   293→                    <tr key={tier.id} className={i < arr.length - 1 ? 'border-b border-slate-900' : ''}>
+   210→   294→                      <td className="py-1 pr-2 font-bold" style={{ color: tier.accentColor }}>{tier.name}</td>
+   211→   295→                      <td className="py-1 pr-2 text-emerald-300">FREE</td>
+   212→   296→                      <td className="py-1 pr-2">{tier.botsCount}</td>
+   213→   297→                      <td className="py-1 pr-2 text-slate-500">x{tier.rewardMultiplier}</td>
+   214→   298→                      <td className="py-1">{tier.difficulty}</td>
+   215→   299→                    </tr>
+   216→   300→                  ))}
+   217→   301→                </tbody>
+   218→   302→              </table>
+   219→   303→            </div>
+   220→   304→          </InfoCard>
+   221→   305→
+   222→   306→          {/* ================================================================= */}
+   223→   307→          {/* 3. FOOD ORBS & STAR CHIPS */}
+   224→   308→          {/* ================================================================= */}
+   225→   309→          <Section icon={<Coins className="w-4 h-4" />} title="3. FOOD ORBS &amp; STAR CHIPS" accent="text-amber-400">
+   226→   310→            <p className="mb-2">Two types of collectibles exist on the arena floor:</p>
+   227→   311→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   228→   312→              <InfoCard title="🟢 Food Orbs (3 sizes)" accent="text-emerald-300">
+   229→   313→                <ul className="list-disc pl-4 space-y-0.5">
+   230→   314→                  <li><strong>Small:</strong> 1 point, green glow (93% chance — very common)</li>
+   231→   315→                  <li><strong>Medium:</strong> 3 points, blue glow (4% chance)</li>
+   232→   316→                  <li><strong>Large:</strong> 5 points, pink glow (3% chance — rare)</li>
+   233→   317→                </ul>
+   234→   318→                <p className="mt-1">Eating food increases score and body length. Growth rate is 1/4 of food value. ALL snakes eat food orbs. Food orbs do NOT affect carried chips.</p>
+   235→   319→              </InfoCard>
+   236→   320→              <InfoCard title="💀 Death Food Orbs (Body Drop)" accent="text-rose-300">
+   237→   321→                <ul className="list-disc pl-4 space-y-0.5">
+   238→   322→                  <li>When any snake (bot or player) dies from <strong>collision</strong>, their body transforms into food orbs <strong>scattered along the body path</strong>.</li>
+   239→   323→                  <li>Total food value = the dead snake&apos;s <strong>entire score</strong>, broken into S/M/L orbs.</li>
+   240→   324→                  <li><strong>Large (5pts, pink):</strong> score ÷ 5. <strong>Medium (3pts, blue):</strong> remainder ÷ 3. <strong>Small (1pt, green):</strong> whatever&apos;s left.</li>
+   241→   325→                  <li><strong>Example:</strong> A snake with score 23 dies → 4 large (4×5=20), 1 medium (1×3=3), 0 small. Total = 23 ✓</li>
+   242→   326→                  <li><strong>ALL snakes</strong> (players + bots) can eat death food → increases score/size only.</li>
+   243→   327→                  <li><strong>Wall death:</strong> NO food orbs drop at all (score is destroyed to prevent edge farming).</li>
+   244→   328→                  <li>Death food orbs are <strong>completely separate from stars</strong> — food affects score/size, stars affect carried chips.</li>
+   245→   329→                </ul>
+   246→   330→              </InfoCard>
+   247→   331→              <InfoCard title={<><Star className="w-3.5 h-3.5 text-amber-400 inline" /> Star Chips (Chip Fragments from Death)</>} accent="text-amber-300">
+   248→   332→                <ul className="list-disc pl-4 space-y-0.5">
+   249→   333→                  <li>A player enters the arena with their <strong>buy-in chips</strong>. During the match, collecting stars from dead opponents increases their <strong>carried chips</strong> (buy-in + star value collected). This total is shown above the player&apos;s head.</li>
+   250→   334→                  <li><strong>Carried Chips</strong> = buy-in chips + collected star value. Food orbs and boost do NOT affect carried chips — they only affect score and size.</li>
+   251→   335→                  <li>When a <strong>real player dies</strong>, their carried chips transform into exactly <strong>10 stars</strong> at the player&apos;s last position. Stars do NOT scatter or spread on the map.</li>
+   252→   336→                  <li>Each star&apos;s value = <strong>carried chips ÷ 10</strong>. All 10 stars have the same value.</li>
+   253→   337→                  <li><strong>Example:</strong> If your carried chips are <strong>275c</strong> when you die → each star = 275 ÷ 10 = <strong>27.5c</strong>. 10 stars × 27.5c = 275c total.</li>
+   254→   338→                  <li>Only <strong>real players</strong> can collect stars. Bots cannot see, touch, or collect stars.</li>
+   255→   339→                  <li>Collecting a star adds its chip value to your <strong>carried chips</strong> (not score).</li>
+   256→   340→                  <li>Bots <strong>never</strong> drop stars on death — they vanish cleanly.</li>
+   257→   341→                </ul>
+   258→   342→              </InfoCard>
+   259→   343→            </div>
+   260→   344→          </Section>
+   261→   345→
+   262→   346→          {/* ================================================================= */}
+   263→   347→          {/* 4. BOOST MECHANIC */}
+   264→   348→          {/* ================================================================= */}
+   265→   349→          <Section icon={<Zap className="w-4 h-4" />} title="4. BOOST MECHANIC" accent="text-cyan-400">
+   266→   350→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   267→   351→              <InfoCard title="How Boost Works" accent="text-cyan-300">
+   268→   352→                <ul className="list-disc pl-4 space-y-0.5">
+   269→   353→                  <li>Hold Space / Left-click / Boost button</li>
+   270→   354→                  <li>Speed: 4.5 → 8.0 (nearly 2x faster)</li>
+   271→   355→                  <li>~3 times per second, tail drops a <strong>food orb</strong> (continuous trail)</li>
+   272→   356→                  <li>Snake <strong>shrinks</strong> by 1 segment per drop</li>
+   273→   357→                  <li>Need &gt;8 body segments to boost</li>
+   274→   358→                  <li><strong>Earned mass required:</strong> Must have eaten food first (score above starting score)</li>
+   275→   359→                </ul>
+   276→   360→              </InfoCard>
+   277→   361→              <InfoCard title="Strategy Tips" accent="text-rose-300">
+   278→   362→                <ul className="list-disc pl-4 space-y-0.5">
+   279→   363→                  <li>Use to cut off rivals or escape danger</li>
+   280→   364→                  <li>Boosting burns earned mass faster than eating grows it</li>
+   281→   365→                  <li>Dropped food orbs can be collected by anyone</li>
+   282→   366→                  <li>Cannot boost at starting score — eat food first!</li>
+   283→   367→                </ul>
+   284→   368→              </InfoCard>
+   285→   369→            </div>
+   286→   370→          </Section>
+   287→   371→
+   288→   372→          {/* ================================================================= */}
+   289→   373→          {/* 5. COLLISION RULES */}
+   290→   374→          {/* ================================================================= */}
+   291→   375→          <Section icon={<Crosshair className="w-4 h-4" />} title="5. COLLISION RULES" accent="text-rose-400">
+   292→   376→            <div className="space-y-3">
+   293→   377→              <InfoCard title="Head-to-Body Collision" accent="text-rose-300">
+   294→   378→                If your head hits another snake&apos;s body, <strong>YOU die</strong>. Your body transforms into food orbs spread along your body path. If you had carried chips, <strong>10 stars</strong> appear at your last position.
+   295→   379→                <strong>Neck protection:</strong> First 5 segments behind a head cannot kill (prevents unfair &quot;neck touch&quot;).
+   296→   380→              </InfoCard>
+   297→   381→              <InfoCard title="Head-on Collision (Head vs Head)" accent="text-amber-300">
+   298→   382→                <ul className="list-disc pl-4 space-y-0.5">
+   299→   383→                  <li><strong>Neither boosting:</strong> Larger wins, smaller dies</li>
+   300→   384→                  <li><strong>Smaller boosting, larger steady:</strong> Smaller survives!</li>
+   301→   385→                  <li><strong>Both boosting:</strong> Larger wins</li>
+   302→   386→                  <li><strong>Tie:</strong> Both die</li>
+   303→   387→                </ul>
+   304→   388→              </InfoCard>
+   305→   389→              <InfoCard title="Map Boundary (Online Only)" accent="text-emerald-300">
+   306→   390→                <ul className="list-disc pl-4 space-y-0.5">
+   307→   391→                  <li>Going outside the circular map = <strong>instant death</strong>. Boundary gently breathes (±40px).</li>
+   308→   392→                  <li><strong>Food Orbs:</strong> NONE — score is completely destroyed (prevents edge farming).</li>
+   309→   393→                  <li><strong>Stars:</strong> YES — if player had carried chips &gt; 0, exactly <strong>10 stars</strong> drop at death position. Other players can collect them.</li>
+   310→   394→                  <li><strong>Player loses everything:</strong> Both score and carried chips are gone.</li>
+   311→   395→                  <li><strong>Bot wall death:</strong> Vanish cleanly — 0 food, 0 stars (bots never carry chips).</li>
+   312→   396→                </ul>
+   313→   397→              </InfoCard>
+   314→   398→            </div>
+   315→   399→          </Section>
+   316→   400→
+   317→   401→          {/* ================================================================= */}
+   318→   402→          {/* 6. BOT AI BEHAVIOR */}
+   319→   403→          {/* ================================================================= */}
+   320→   404→          <Section icon={<Bot className="w-4 h-4" />} title="6. BOT AI BEHAVIOR" accent="text-violet-400">
+   321→   405→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   322→   406→              <InfoCard title="Harvesting Mode" accent="text-violet-300">
+   323→   407→                <ul className="list-disc pl-4 space-y-0.5">
+   324→   408→                  <li>Seek nearest food orbs</li>
+   325→   409→                  <li>Dodge players (predictive — 8 ticks ahead)</li>
+   326→   410→                  <li>Avoid body segments (150px range)</li>
+   327→   411→                  <li>Turn away from map boundary</li>
+   328→   412→                  <li>Never boost, never collect stars</li>
+   329→   413→                </ul>
+   330→   414→              </InfoCard>
+   331→   415→              <InfoCard title="Self-Destruct (Online Only)" accent="text-rose-300">
+   332→   416→                <ul className="list-disc pl-4 space-y-0.5">
+   333→   417→                  <li>Triggered at score ≥100</li>
+   334→   418→                  <li>Navigate <strong>toward</strong> wall slowly</li>
+   335→   419→                  <li><strong>NEVER boost</strong></li>
+   336→   420→                  <li>Still collect food on the way</li>
+   337→   421→                  <li>Wall death = vanish cleanly (0 food, 0 stars)</li>
+   338→   422→                </ul>
+   339→   423→              </InfoCard>
+   340→   424→            </div>
+   341→   425→          </Section>
+   342→   426→
+   343→   427→          {/* ================================================================= */}
+   344→   428→          {/* 7. MAP & SAFE SPAWNING */}
+   345→   429→          {/* ================================================================= */}
+   346→   430→          <Section icon={<Map className="w-4 h-4" />} title="7. MAP &amp; SAFE SPAWNING" accent="text-emerald-400">
+   347→   431→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   348→   432→              <InfoCard title="Online Map" accent="text-emerald-300">
+   349→   433→                <ul className="list-disc pl-4 space-y-0.5">
+   350→   434→                  <li>Circular arena (breathes ±40px over 10s)</li>
+   351→   435→                  <li>Radius scales with player count</li>
+   352→   436→                  <li>Outside boundary = death</li>
+   353→   437→                </ul>
+   354→   438→              </InfoCard>
+   355→   439→              <InfoCard title="Offline Map" accent="text-amber-300">
+   356→   440→                <ul className="list-disc pl-4 space-y-0.5">
+   357→   441→                  <li><strong>Infinite</strong> — no boundaries, no wall death</li>
+   358→   442→                  <li>Roam freely in any direction</li>
+   359→   443→                </ul>
+   360→   444→              </InfoCard>
+   361→   445→              <InfoCard title="Safe Spawning" accent="text-cyan-300">
+   362→   446→                <ul className="list-disc pl-4 space-y-0.5">
+   363→   447→                  <li>500px from every other snake</li>
+   364→   448→                  <li>500px inside map boundary (online)</li>
+   365→   449→                  <li><strong>4s spawn protection</strong> (invulnerable)</li>
+   366→   450→                </ul>
+   367→   451→              </InfoCard>
+   368→   452→            </div>
+   369→   453→          </Section>
+   370→   454→
+   371→   455→          {/* ================================================================= */}
+   372→   456→          {/* 8. EXTRACTION */}
+   373→   457→          {/* ================================================================= */}
+   374→   458→          <Section icon={<Trophy className="w-4 h-4" />} title="8. EXTRACTION" accent="text-amber-400">
+   375→   459→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   376→   460→              <InfoCard title="How to Extract" accent="text-amber-300">
+   377→   461→                <ul className="list-disc pl-4 space-y-0.5">
+   378→   462→                  <li>Hold <strong>E key</strong> or <strong>EXTRACT</strong> button</li>
+   379→   463→                  <li>3-second progress bar — forward gliding is allowed</li>
+   380→   464→                  <li><strong>Steering restarts progress to 0%</strong> — you can glide forward naturally, but any direction change (even slight) resets the timer</li>
+   381→   465→                  <li>A white-to-green <strong>progress ring</strong> appears near your snake head — <strong>only visible to you</strong>, other players cannot see it</li>
+   382→   466→                  <li>Extract <strong>anytime</strong> — no minimum threshold</li>
+   383→   467→                  <li>Extract <strong>anywhere</strong> — no zone restriction</li>
+   384→   468→                </ul>
+   385→   469→              </InfoCard>
+   386→   470→              <InfoCard title="Commission" accent="text-rose-300">
+   387→   471→                <ul className="list-disc pl-4 space-y-0.5">
+   388→   472→                  <li><strong>≤3 real players:</strong> 0% (keep 100%)</li>
+   389→   473→                  <li><strong>≥4 real players:</strong> 35% (keep 65%)</li>
+   390→   474→                  <li>Rate shown live on HUD</li>
+   391→   475→                </ul>
+   392→   476→              </InfoCard>
+   393→   477→            </div>
+   394→   478→            <InfoCard title="Extraction UI Elements" accent="text-cyan-300">
+   395→   479→              <ul className="list-disc pl-4 space-y-0.5">
+   396→   480→                <li><strong>Top-center hint:</strong> &quot;Hold E or press the button below to cash out safely!&quot; — always visible while playing</li>
+   397→   481→                <li><strong>Progress popup:</strong> When extracting, a bar fills 0→100% with amber gradient. Commission rate shown below</li>
+   398→   482→                <li><strong>Movement flash:</strong> If you move during extraction, a red &quot;⚠ MOVEMENT DETECTED — Extraction restarted!&quot; warning flashes</li>
+   399→   483→                <li><strong>EXTRACT button:</strong> Bottom-right circular button (80px). Shows percentage while extracting, turns green when active</li>
+   400→   484→                <li><strong>BOOST button:</strong> Adjacent circular button (64px, amber). Hold to boost. Must have 8+ body segments and earned mass</li>
+   401→   485→              </ul>
+   402→   486→            </InfoCard>
+   403→   487→          </Section>
+   404→   488→
+   405→   489→          {/* ================================================================= */}
+   406→   490→          {/* 9. IN-GAME HUD EXPLAINED */}
+   407→   491→          {/* ================================================================= */}
+   408→   492→          <Section icon={<Gamepad className="w-4 h-4" />} title="9. IN-GAME HUD EXPLAINED" accent="text-indigo-400">
+   409→   493→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   410→   494→              <InfoCard title="Top-Left: Status Cards" accent="text-emerald-300">
+   411→   495→                <ul className="list-disc pl-4 space-y-0.5">
+   412→   496→                  <li><strong>Carried Chips (online only):</strong> Green card showing total carried chips with &quot;c&quot; suffix. Starts at buy-in amount, increases when you collect star chips from dead players. Hidden in offline mode</li>
+   413→   497→                  <li><strong>Stars Earned (online only):</strong> Amber card showing extra chips earned from collecting star collectibles (Carried Chips − Buy-In)</li>
+   414→   498→                  <li><strong>Stars in Arena (online only):</strong> Shows how many golden star collectibles are currently on the arena floor (drops when real players die, decreases when collected)</li>
+   415→   499→                  <li><strong>Rank:</strong> Yellow trophy icon + arena rank number</li>
+   416→   500→                  <li><strong>Score:</strong> Purple shield icon + snake body length</li>
+   417→   501→                  <li><strong>Kills:</strong> Red skull icon + opponents eliminated</li>
+   418→   502→                  <li><strong>Boost:</strong> Amber zap icon + &quot;SPACE&quot; reminder</li>
+   419→   503→                  <li><strong>Active Competitors:</strong> &quot;Real Players: N Active&quot; (pulsing indigo) or &quot;Offline Mode: 1 Player&quot; (amber)</li>
+   420→   504→                </ul>
+   421→   505→              </InfoCard>
+   422→   506→              <InfoCard title="Top-Right: Network &amp; Leaderboard" accent="text-cyan-300">
+   423→   507→                <ul className="list-disc pl-4 space-y-0.5">
+   424→   508→                  <li><strong>Banked Chips:</strong> Amber card showing vault balance (deducts buy-in on match start)</li>
+   425→   509→                  <li><strong>FPS / Ping:</strong> Frames per second + latency in ms. Color-coded. &quot;LQ&quot; badge if low quality</li>
+   426→   510→                  <li><strong>Chat / Minimap:</strong> Below banked card. Chat opens message dialog. Minimap toggles radar</li>
+   427→   511→                  <li><strong>Arena Leaders (Online):</strong> Collapsible top-10 leaderboard of real players only. Sorted by carried chips (e.g., &quot;100c&quot; in green). Shows player name, country flag, carried chips. Your entry highlighted with &quot;YOU&quot; badge in indigo. Shows &quot;No real players yet.&quot; if you&apos;re the only one</li>
+   428→   512→                  <li><strong>Arena Leaders (Offline):</strong> Top-10 of you + nearby active bots. Sorted by score (body length, shown in indigo). Your entry highlighted in green. No country flags shown</li>
+   429→   513→                </ul>
+   430→   514→              </InfoCard>
+   431→   515→              <InfoCard title="Bottom-Left: Quick Chat Emotes" accent="text-violet-300">
+   432→   516→                <ul className="list-disc pl-4 space-y-0.5">
+   433→   517→                  <li>5 emotes: GG! 🏆, Target! 🎯, Flee! 🏃💨, Ripped! 💪, Extracting! ⚡</li>
+   434→   518→                  <li>Keyboard shortcuts: Keys 1-5 for instant emotes</li>
+   435→   519→                  <li>Emotes appear as chat bubbles above snake head for 4 seconds</li>
+   436→   520→                </ul>
+   437→   521→              </InfoCard>
+   438→   522→              <InfoCard title="Bottom-Right: Action Buttons" accent="text-amber-300">
+   439→   523→                <ul className="list-disc pl-4 space-y-0.5">
+   440→   524→                  <li><strong>BOOST:</strong> 64px amber circle. Hold to activate</li>
+   441→   525→                  <li><strong>EXTRACT:</strong> 80px green circle. Hold to extract. Shows % during extraction</li>
+   442→   526→                  <li><strong>EXIT:</strong> Small pill button at far-left bottom. Leaves match (forfeits carried chips online)</li>
+   443→   527→                </ul>
+   444→   528→              </InfoCard>
+   445→   529→            </div>
+   446→   530→            <InfoCard title="Overlays &amp; Indicators" accent="text-rose-300">
+   447→   531→              <ul className="list-disc pl-4 space-y-0.5">
+   448→   532→                <li><strong>Reconnecting:</strong> Amber pill at top-center with Wifi icon</li>
+   449→   533→                <li><strong>Minimap:</strong> Bottom-left circular radar (toggle M key). Player, food, boundary</li>
+   450→   534→                <li><strong>Full Map:</strong> Press M for full-screen arena map</li>
+   451→   535→                <li><strong>Commission indicator:</strong> Rate shown below extraction progress bar</li>
+   452→   536→              </ul>
+   453→   537→            </InfoCard>
+   454→   538→          </Section>
+   455→   539→
+   456→   540→          {/* ================================================================= */}
+   457→   541→          {/* 10. TACTICAL CHALLENGES */}
+   458→   542→          {/* ================================================================= */}
+   459→   543→          <Section icon={<ListTodo className="w-4 h-4" />} title="10. TACTICAL CHALLENGES" accent="text-emerald-400">
+   460→   544→            <p className="mb-2">
+   461→   545→              Tactical Challenges are daily and weekly missions that reward bonus chips for completing
+   462→   546→              specific in-game objectives. View them in the right sidebar of the Lobby Headquarters.
+   463→   547→              Challenges <strong>scale with your level</strong> — as you grow, missions get harder but pay more.
+   464→   548→            </p>
+   465→   549→
+   466→   550→            {/* Level Tiers */}
+   467→   551→            <InfoCard title="Challenge Level Tiers" accent="text-emerald-300">
+   468→   552→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+   469→   553→                <div className="bg-emerald-950/30 border border-emerald-500/20 p-2 rounded-lg text-center">
+   470→   554→                  <div className="text-[10px] font-bold text-emerald-400 uppercase">Novice</div>
+   471→   555→                  <div className="text-[10px] text-slate-500">Level 1–5</div>
+   472→   556→                  <div className="text-[10px] text-slate-400">×1.0 reward</div>
+   473→   557→                </div>
+   474→   558→                <div className="bg-cyan-950/30 border border-cyan-500/20 p-2 rounded-lg text-center">
+   475→   559→                  <div className="text-[10px] font-bold text-cyan-400 uppercase">Operative</div>
+   476→   560→                  <div className="text-[10px] text-slate-500">Level 6–15</div>
+   477→   561→                  <div className="text-[10px] text-slate-400">×1.5 reward</div>
+   478→   562→                </div>
+   479→   563→                <div className="bg-amber-950/30 border border-amber-500/20 p-2 rounded-lg text-center">
+   480→   564→                  <div className="text-[10px] font-bold text-amber-400 uppercase">Veteran</div>
+   481→   565→                  <div className="text-[10px] text-slate-500">Level 16–30</div>
+   482→   566→                  <div className="text-[10px] text-slate-400">×2.5 reward</div>
+   483→   567→                </div>
+   484→   568→                <div className="bg-red-950/30 border border-red-500/20 p-2 rounded-lg text-center">
+   485→   569→                  <div className="text-[10px] font-bold text-red-400 uppercase">Elite</div>
+   486→   570→                  <div className="text-[10px] text-slate-500">Level 31+</div>
+   487→   571→                  <div className="text-[10px] text-slate-400">×4.0 reward</div>
+   488→   572→                </div>
+   489→   573→              </div>
+   490→   574→            </InfoCard>
+   491→   575→
+   492→   576→            {/* Challenge Types */}
+   493→   577→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+   494→   578→              <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl space-y-1.5">
+   495→   579→                <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+   496→   580→                  <Zap className="w-3.5 h-3.5" /> Daily Challenges (3 per day)
+   497→   581→                </span>
+   498→   582→                <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
+   499→   583→                  <li><strong>3 new challenges</strong> every day (UTC midnight reset)</li>
+   500→   584→                  <li>Always <strong>3 different categories</strong> (no duplicates in same day)</li>
+   501→   585→                  <li><strong>Anti-repeat:</strong> yesterday's challenges are excluded</li>
+   502→   586→                  <li>Objectives include: kills, extractions, star collection, score (body length), arena entries, survival time, and extraction streaks</li>
+   503→   587→                  <li>Rewards scale with your level tier (×1.0 to ×4.0)</li>
+   504→   588→                </ul>
+   505→   589→              </div>
+   506→   590→
+   507→   591→              <div className="bg-violet-950/20 border border-violet-500/30 p-3 rounded-xl space-y-1.5">
+   508→   592→                <span className="font-bold text-violet-300 flex items-center gap-1.5 text-xs">
+   509→   593→                  <Star className="w-3.5 h-3.5" /> Weekly Challenges (2 per week)
+   510→   594→                </span>
+   511→   595→                <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
+   512→   596→                  <li><strong>2 new challenges</strong> every Monday (UTC weekly reset)</li>
+   513→   597→                  <li>Always <strong>2 different categories</strong></li>
+   514→   598→                  <li><strong>Anti-repeat:</strong> last week's challenges are excluded</li>
+   515→   599→                  <li>Higher difficulty with bigger scaled rewards</li>
+   516→   600→                  <li>Must claim before the week ends!</li>
+   517→   601→                </ul>
+   518→   602→              </div>
+   519→   603→            </div>
+   520→   604→
+   521→   605→            {/* Streak Bonus */}
+   522→   606→            <InfoCard title="🔥 Streak Bonus System" accent="text-amber-300" className="mt-3">
+   523→   607→              <p className="mb-1">Complete and claim <strong>ALL daily challenges</strong> for consecutive days to build a streak:</p>
+   524→   608→              <ul className="list-disc pl-4 space-y-0.5 text-slate-400 text-[11px]">
+   525→   609→                <li><strong>3-day streak</strong> → ×1.5 reward bonus on all challenge claims</li>
+   526→   610→                <li><strong>7-day streak</strong> → ×2.0 reward bonus</li>
+   527→   611→                <li><strong>14-day streak</strong> → ×3.0 reward bonus</li>
+   528→   612→                <li>Missing a day resets your streak to 0</li>
+   529→   613→                <li>Your current streak and multiplier are shown in the challenges panel header</li>
+   530→   614→              </ul>
+   531→   615→            </InfoCard>
+   532→   616→          </Section>
+   533→   617→
+   534→   618→          {/* ================================================================= */}
+   535→   619→          {/* 11. DEATH & REPLAY */}
+   536→   620→          {/* ================================================================= */}
+   537→   621→          <Section icon={<Skull className="w-4 h-4" />} title="11. DEATH &amp; REPLAY" accent="text-rose-400">
+   538→   622→            <div className="space-y-3">
+   539→   623→              <InfoCard title="When You Die" accent="text-rose-300">
+   540→   624→                <ul className="list-disc pl-4 space-y-0.5">
+   541→   625→                  <li>Body transforms to food orbs <strong>spread along your body path</strong></li>
+   542→   626→                  <li>Food values sum to exactly your total score</li>
+   543→   627→                  <li>10 golden star chips appear at your death position if you had carried chips</li>
+   544→   628→                  <li>Anyone can collect your dropped food/stars</li>
+   545→   629→                  <li>Killed by real player → View Profile / Add Friend / Add Rival buttons</li>
+   546→   630→                </ul>
+   547→   631→              </InfoCard>
+   548→   632→              <InfoCard title="Death Replay (15s Before + 15s After)" accent="text-cyan-300">
+   549→   633→                <ul className="list-disc pl-4 space-y-0.5">
+   550→   634→                  <li>15s before death (circular buffer)</li>
+   551→   635→                  <li>15s after death (shows food being collected)</li>
+   552→   636→                  <li>Camera stays on death food, then follows first collector</li>
+   553→   637→                  <li>Controls: Play/Pause, Speed, Zoom, Restart</li>
+   554→   638→                  <li>Progress bar with death marker</li>
+   555→   639→                </ul>
+   556→   640→              </InfoCard>
+   557→   641→            </div>
+   558→   642→          </Section>
+   559→   643→
+   560→   644→          {/* ================================================================= */}
+   561→   645→          {/* 12. LOBBY LEADERBOARDS */}
+   562→   646→          {/* ================================================================= */}
+   563→   647→          <Section icon={<Crown className="w-4 h-4" />} title="12. LOBBY LEADERBOARDS" accent="text-amber-400">
+   564→   648→            <div className="flex flex-col gap-2.5">
+   565→   649→              <InfoCard title="What is the Lobby Leaderboard?" accent="text-amber-300">
+   566→   650→                <p>The lobby houses three levels of official tournament leaderboards, all <strong>database-backed and real-time</strong>. Your rank reflects your lifetime <strong>banked chips</strong> across all matches.</p>
+   567→   651→              </InfoCard>
+   568→   652→
+   569→   653→              <InfoCard title="Your Rank Summary Card" accent="text-amber-300">
+   570→   654→                <p>At the top of the leaderboard tab, a prominent card always shows <strong>your position</strong> at a glance:</p>
+   571→   655→                <ul className="list-disc pl-4 space-y-0.5">
+   572→   656→                  <li><strong>Global Rank</strong> — Your position among all players worldwide</li>
+   573→   657→                  <li><strong>National Rank</strong> — Your rank within your country</li>
+   574→   658→                  <li><strong>Country</strong> — Your registered nation (flag + name)</li>
+   575→   659→                  <li><strong>Milestone Tier</strong> — Your current badge (see below)</li>
+   576→   660→                  <li><strong>Banked Chips</strong> — Your total lifetime banked chips</li>
+   577→   661→                </ul>
+   578→   662→              </InfoCard>
+   579→   663→
+   580→   664→              <InfoCard title="Level 3: World Summit &amp; Global" accent="text-amber-300">
+   581→   665→                <p className="mb-1.5"><strong>World Summit</strong> — Shows the #1 ranked player from each country, sorted by banked chips. Only one champion per nation.</p>
+   582→   666→                <p><strong>Global Rankings</strong> — Top 100 players worldwide sorted by banked chips. Each row shows: Global Rank, Player name + Ledger Tag + Country flag, Milestone Badge, and Banked Chips.</p>
+   583→   667→                <p className="mt-1">If you&apos;re in the list, the page auto-scrolls to your &quot;YOU&quot; row.</p>
+   584→   668→              </InfoCard>
+   585→   669→
+   586→   670→              <InfoCard title="Level 2: National Boards" accent="text-cyan-300">
+   587→   671→                <p>Choose from <strong>197 supported countries</strong> via dropdown + search. Shows the top 100 players from that country, sorted by banked chips. Columns: National Rank, Player name + Tag, Level, Banked Chips.</p>
+   588→   672→              </InfoCard>
+   589→   673→
+   590→   674→              <InfoCard title="🏅 Milestone Badge System — What Are These Badges?" accent="text-yellow-300">
+   591→   675→                <p className="mb-1.5">Every player is assigned a <strong>Milestone Badge</strong> based on their <strong>lifetime banked chips</strong>. This badge appears beside your name on the Global View leaderboard, in your &quot;Your Rank&quot; summary card, and in the Player Inspector.</p>
+   592→   676→                <ul className="list-disc pl-4 space-y-0.5 mb-2">
+   593→   677→                  <li>Badges <strong>automatically upgrade</strong> when your banked chips cross a threshold — no action needed.</li>
+   594→   678→                  <li>Badges <strong>can downgrade</strong> if your banked chips fall below a tier&apos;s requirement (e.g., by buying into arenas and dying without extracting).</li>
+   595→   679→                  <li>Your tier is always calculated from your <strong>current banked chip balance</strong> in real-time.</li>
+   596→   680→                  <li>Only <strong>extracted chips</strong> count — carried chips lost in-arena do NOT contribute.</li>
+   597→   681→                </ul>
+   598→   682→                <div className="overflow-x-auto mt-1">
+   599→   683→                  <table className="w-full text-[10px] border-collapse">
+   600→   684→                    <thead>
+   601→   685→                      <tr className="text-slate-400 border-b border-slate-800">
+   602→   686→                        <th className="text-left py-1 pr-2">Badge</th>
+   603→   687→                        <th className="text-left py-1 pr-2">Tier Name</th>
+   604→   688→                        <th className="text-left py-1 pr-2">Min. Banked Chips</th>
+   605→   689→                        <th className="text-left py-1">Description</th>
+   606→   690→                      </tr>
+   607→   691→                    </thead>
+   608→   692→                    <tbody className="text-slate-300">
+   609→   693→                      <tr className="border-b border-slate-900">
+   610→   694→                        <td className="py-1 pr-2 font-bold" style={{ color: '#64748b' }}>🛡️ Rookie</td>
+   611→   695→                        <td className="py-1 pr-2" style={{ color: '#64748b' }}>Challenger</td>
+   612→   696→                        <td className="py-1 pr-2 text-slate-400">0 — 99,999</td>
+   613→   697→                        <td className="py-1 text-slate-400">Starting tier for all new players. Just getting started!</td>
+   614→   698→                      </tr>
+   615→   699→                      <tr className="border-b border-slate-900">
+   616→   700→                        <td className="py-1 pr-2 font-bold" style={{ color: '#b45309' }}>🥉 Bronze</td>
+   617→   701→                        <td className="py-1 pr-2" style={{ color: '#b45309' }}>Bronze Elite</td>
+   618→   702→                        <td className="py-1 pr-2 text-slate-400">100K+ (1 Lakh)</td>
+   619→   703→                        <td className="py-1 text-slate-400">First milestone. Proven arena survival skills.</td>
+   620→   704→                      </tr>
+   621→   705→                      <tr className="border-b border-slate-900">
+   622→   706→                        <td className="py-1 pr-2 font-bold" style={{ color: '#cbd5e1' }}>🥈 Silver</td>
+   623→   707→                        <td className="py-1 pr-2" style={{ color: '#cbd5e1' }}>Silver Commander</td>
+   624→   708→                        <td className="py-1 pr-2 text-slate-400">500K+ (5 Lakhs)</td>
+   625→   709→                        <td className="py-1 text-slate-400">Consistent extractor with strategic awareness.</td>
+   626→   710→                      </tr>
+   627→   711→                      <tr className="border-b border-slate-900">
+   628→   712→                        <td className="py-1 pr-2 font-bold" style={{ color: '#f59e0b' }}>🥇 Gold</td>
+   629→   713→                        <td className="py-1 pr-2" style={{ color: '#f59e0b' }}>Gold Apex Vanguard</td>
+   630→   714→                        <td className="py-1 pr-2 text-slate-400">1M+ (10 Lakhs)</td>
+   631→   715→                        <td className="py-1 text-slate-400">Elite player — top-tier extraction machine.</td>
+   632→   716→                      </tr>
+   633→   717→                      <tr className="border-b border-slate-900">
+   634→   718→                        <td className="py-1 pr-2 font-bold" style={{ color: '#22d3ee' }}>💎 Platinum</td>
+   635→   719→                        <td className="py-1 pr-2" style={{ color: '#22d3ee' }}>Platinum Sovereign</td>
+   636→   720→                        <td className="py-1 pr-2 text-slate-400">2.5M+ (25 Lakhs)</td>
+   637→   721→                        <td className="py-1 text-slate-400">Arena dominator — feared by rivals.</td>
+   638→   722→                      </tr>
+   639→   723→                      <tr className="border-b border-slate-900">
+   640→   724→                        <td className="py-1 pr-2 font-bold" style={{ color: '#06b6d4' }}>🔮 Diamond</td>
+   641→   725→                        <td className="py-1 pr-2" style={{ color: '#06b6d4' }}>Diamond Warlord</td>
+   642→   726→                        <td className="py-1 pr-2 text-slate-400">5M+ (50 Lakhs)</td>
+   643→   727→                        <td className="py-1 text-slate-400">Legendary status — a true warlord of the arena.</td>
+   644→   728→                      </tr>
+   645→   729→                      <tr>
+   646→   730→                        <td className="py-1 pr-2 font-bold" style={{ color: '#fbbf24' }}>👑 Omega</td>
+   647→   731→                        <td className="py-1 pr-2" style={{ color: '#fbbf24' }}>Omega Legend</td>
+   648→   732→                        <td className="py-1 pr-2 text-slate-400">10M+ (1 Crore)</td>
+   649→   733→                        <td className="py-1 text-slate-400">The pinnacle. Ultimate venom arena champion.</td>
+   650→   734→                      </tr>
+   651→   735→                    </tbody>
+   652→   736→                  </table>
+   653→   737→                </div>
+   654→   738→              </InfoCard>
+   655→   739→
+   656→   740→              <InfoCard title="Level 1: Milestone Tier Ranks" accent="text-yellow-300">
+   657→   741→                <p>Filter by milestone tier using the badge buttons:</p>
+   658→   742→                <ul className="list-disc pl-4 space-y-0.5">
+   659→   743→                  <li>⭐ <strong>All Tiers</strong> — Every ranked player</li>
+   660→   744→                  <li>🛡️ <strong>Rookie / Challenger</strong> — Players below 100K banked chips</li>
+   661→   745→                  <li>🥉 <strong>Bronze Elite</strong> — 100K+ banked chips</li>
+   662→   746→                  <li>🥈 <strong>Silver Commander</strong> — 5 Lakh (500K+) banked chips</li>
+   663→   747→                  <li>🥇 <strong>Gold Apex Vanguard</strong> — 10 Lakh (1M+) banked chips</li>
+   664→   748→                  <li>💎 <strong>Platinum Sovereign</strong> — 25 Lakh (2.5M+) banked chips</li>
+   665→   749→                  <li>🔮 <strong>Diamond Warlord</strong> — 50 Lakh (5M+) banked chips</li>
+   666→   750→                  <li>👑 <strong>Omega Legend</strong> — 1 Crore (10M+) banked chips</li>
+   667→   751→                </ul>
+   668→   752→              </InfoCard>
+   669→   753→
+   670→   754→              <InfoCard title="Empty Boards &amp; Demo Rows" accent="text-slate-300">
+   671→   755→                <p>If no players have reached a particular tier or country board yet, you&apos;ll see an encouraging message and a <strong>demo row</strong> (clearly labeled) showing how the leaderboard will look once players qualify.</p>
+   672→   756→              </InfoCard>
+   673→   757→
+   674→   758→              <InfoCard title="Player Inspector" accent="text-indigo-300">
+   675→   759→                <p>Click any player row to open their profile inspector. Currently shows demo data for clan, career stats, match history, and loadout. Real data will populate as the game economy develops. Ranks shown are always real from the leaderboard.</p>
+   676→   760→              </InfoCard>
+   677→   761→
+   678→   762→              <InfoCard title="Auto-Refresh" accent="text-emerald-300">
+   679→   763→                <p>Leaderboards auto-refresh every 30 minutes. Click the <strong>Refresh</strong> button to fetch the latest data immediately. &quot;Last sync&quot; timestamp shows when data was last fetched.</p>
+   680→   764→              </InfoCard>
+   681→   765→            </div>
+   682→   766→          </Section>
+   683→   767→
+   684→   768→          {/* ================================================================= */}
+   685→   769→          {/* 13. FAQ */}
+   686→   770→          {/* ================================================================= */}
+   687→   771→          <Section icon={<AlertTriangle className="w-4 h-4" />} title="13. FAQ" accent="text-purple-400">
+   688→   772→            <div className="flex flex-col gap-2.5">
+   689→   773→              <FaqItem q="Do I lose my banked vault chips if I crash?" a="No! Your banked vault chips are 100% safe. You only lose the buy-in chips carried in that specific match." />
+   690→   774→              <FaqItem q="What is the graduated commission?" a="If ≤3 real players are in the arena, extraction is FREE (0%). If ≥4 real players, 35% commission applies (you keep 65%)." />
+   691→   775→              <FaqItem q="Why did my extraction restart from 0%?" a="Any steering (changing direction) while extracting resets the 3-second progress to 0%. Forward gliding is natural and allowed — just don't turn!" />
+   692→   776→              <FaqItem q="What is the green ring near extracting players?" a="When YOU are extracting, a white-to-green progress ring appears near your snake head. It's private — only you can see your own extraction ring." />
+   693→   777→              <FaqItem q="Can I Play Again if I don't have enough chips?" a="No. Play Again checks your banked vault balance before letting you rejoin. If you don't have enough chips for the buy-in, you'll see an error and need to earn more chips first." />
+   694→   778→              <FaqItem q="Can I extract at any time?" a="Yes! No minimum chip threshold and no zone restriction. Extract from anywhere on the map." />
+   695→   779→              <FaqItem q="What happens to bots at score 100?" a="(Online only) They enter self-destruct: slowly navigate toward the wall without boosting, collecting food on the way. Wall death = vanish cleanly." />
+   696→   780→              <FaqItem q="Is this gambling?" a="No. Chips are free in-game soft currency with no real-world value. The buy-in is a gameplay risk mechanic, not a wager." />
+   697→   781→              <FaqItem q="How does anti-cheat work?" a="Server is authoritative. All chip creation, food eating, collisions, extraction computed server-side. Client only sends steering input." />
+   698→   782→              <FaqItem q="Do challenge missions carry over?" a="No. Daily missions reset every day at UTC midnight. Weekly missions reset every Monday at UTC midnight. Complete and claim before the period ends!" />
+   699→   783→              <FaqItem q="Can I claim a mission reward twice?" a="No. Each mission can only be claimed once per period. The server prevents double-claiming — even if you refresh or use a different browser." />
+   700→   784→              <FaqItem q="Do I earn XP when I die?" a="No. XP is only earned on successful extraction. Dying forfeits your carried chips and awards 0 XP. Extract safely to earn XP!" />
+   701→   785→              <FaqItem q="How does the Watch Video reward work?" a="After a match ends, click the Watch Video button on the results screen. A 5-second ad plays, then you claim +50 free chips. One ad reward per 60 seconds cooldown." />
+   702→   786→              <FaqItem q="What are the milestone badges (Rookie, Bronze, Silver, Gold, Platinum, Diamond, Omega)?" a="Milestone badges represent your lifetime achievement level. They are automatically assigned based on your total banked chips: Rookie (0-99K), Bronze (100K+), Silver (500K+), Gold (1M+), Platinum (2.5M+), Diamond (5M+), Omega (10M+). Your badge upgrades instantly when you cross a threshold, and can downgrade if your banked chips drop below the requirement." />
+   703→   787→              <FaqItem q="Can I lose my milestone badge?" a="Yes. Your badge is calculated from your current banked chip balance in real-time. If you buy into an arena with a high buy-in and die (losing those chips), your banked balance may drop below your tier threshold, causing a downgrade. Only extracted chips count!" />
+   704→   788→              <FaqItem q="How do I reset my password if I forgot it?" a="Go to the Login page → click &quot;Forgot Password?&quot; → enter your registered email + 4-digit Security PIN → set a new password. This works instantly — no email verification needed. Important: you must have set a Security PIN during registration or in Profile → Security Settings. Without a PIN, password recovery is not available." />
+   705→   789→              <FaqItem q="How do I change or set my Security PIN?" a="Go to Profile → Dossier tab → Security Settings card. If you already have a PIN, enter your current PIN first, then set a new one. If you don&apos;t have a PIN yet, you can set one without entering a current PIN. Your PIN is required for password recovery — don&apos;t forget it!" />
+   706→   790→              <FaqItem q="How does social login (Google, Facebook, Apple) work?" a="Click the provider button on the login page. You&apos;ll be redirected to sign in with your social account. After authorization, a Venom Arena account is automatically created (or linked if your social email matches an existing account). You get 150 starter chips and a VENOM-XXXX tag just like regular registration. No separate password needed." />
+   707→   791→              <FaqItem q="Can I link a password to my social login account?" a="Yes! Go to Profile → Dossier tab → Security Settings. You can change your Security PIN there. If you need a full password (for email login), contact support. Your social login always works regardless." />
+   708→   792→            </div>
+   709→   793→          </Section>
+   710→   794→
+   711→   795→          {/* FOOTER */}
+   712→   796→          <div className="text-center text-[10px] font-mono text-slate-500 uppercase tracking-widest pt-2 border-t border-slate-800/60">
+   713→   797→            Play responsibly · Chips have no real-world value · Stores-safe edition
+   714→   798→          </div>
+   715→   799→        </div>
+   716→   800→
+   717→   801→        <div className="p-4 border-t border-slate-800/80 bg-slate-900/50 flex justify-end">
+   718→   802→          <button
+   719→   803→            type="button"
+   720→   804→            onClick={onClose}
+   721→   805→            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-lg shadow-emerald-600/30"
+   722→   806→          >
+   723→   807→            Understood &amp; Ready to Play
+   724→   808→          </button>
+   725→   809→        </div>
+   726→   810→      </DialogContent>
+   727→   811→    </Dialog>
+   728→   812→  );
+   729→   813→}
+   730→   814→
+   731→   815→/* ========================================================================== */
+   732→   816→/* Helper sub-components                                                      */
+   733→   817→/* ========================================================================== */
+   734→   818→
+   735→   819→function Section({ icon, title, accent, children }: { icon: React.ReactNode; title: string; accent: string; children: React.ReactNode }) {
+   736→   820→  return (
+   737→   821→    <section className="p-4 rounded-xl bg-slate-900/40 border border-slate-800 space-y-2">
+   738→   822→      <h3 className={`flex items-center gap-2 font-bold text-sm ${accent}`}>
+   739→   823→        {icon} {title}
+   740→   824→      </h3>
+   741→   825→      <div className="text-slate-300 text-xs leading-relaxed space-y-2">{children}</div>
+   742→   826→    </section>
+   743→   827→  );
+   744→   828→}
+   745→   829→
+   746→   830→function InfoCard({ title, accent, children }: { title: React.ReactNode; accent: string; children: React.ReactNode }) {
+   747→   831→  return (
+   748→   832→    <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+   749→   833→      <span className={`font-bold ${accent} block text-xs mb-1`}>{title}</span>
+   750→   834→      <div className="text-slate-400 text-[11px] leading-relaxed">{children}</div>
+   751→   835→    </div>
+   752→   836→  );
+   753→   837→}
+   754→   838→
+   755→   839→function FaqItem({ q, a }: { q: string; a: string }) {
+   756→   840→  return (
+   757→   841→    <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+   758→   842→      <h4 className="text-xs font-bold text-white">
+   759→   843→        <span className="text-emerald-400 font-mono mr-1.5">Q.</span>{q}
+   760→   844→      </h4>
+   761→   845→      <p className="text-[11.5px] text-slate-400 mt-1.5 leading-relaxed pl-5">{a}</p>
+   762→   846→    </div>
+   763→   847→  );
+   764→   848→}
+   765→   849→
+   766→   850→export default GameRulesModal;
+   767→   851→
