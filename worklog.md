@@ -120,3 +120,139 @@
 - **Output:** `/home/z/my-project/gdd-parts/10-auth-and-other.md`
 - **Status:** ✅ Complete
 - **Summary:** Exhaustive catalog of all 12 files. (1) auth-gate.tsx — 7 internal functions (getPasswordStrength, AuthGate default export, AuthGateSkeleton export, AuthScreen, LoginForm, RegisterForm, ForgotPasswordForm), 12 lucide-react icons with exact usage locations, password strength calculator (4 labels: Weak/Fair/Good/Strong, 5 scoring criteria), loading state ("Loading arena…" text + Loader2 spinner), AuthScreen with logo (Skull icon + "VENOM ARENA" heading + "Hunt. Harvest. Extract. Don't get caught." tagline), card header ("Enter the arena" title + "Sign in or create an account to play." description), 2-tab navigation (Login with LogIn icon, Register with UserPlus icon, default=login, error cleared on tab switch), social login divider ("or continue with"), 3 social buttons (Google/Facebook/Apple with inline SVG icons, all redirect to /api/auth/social-login?provider=X), guest divider ("or"), guest button ("Play as Guest" with Ghost icon, POST /api/auth/guest), bottom info ("⚡ Guests get 150 starter chips. Register to keep your progress."), "View Rules & Guide" link (BookOpen icon), Forgot Password dialog ("Reset Password" title, "Enter your email and 4-digit Security PIN to set a new password." description). LoginForm: 4 fields (Email with Mail icon + placeholder "you@arena.gg", Password with KeyRound icon + placeholder "••••••••" + Eye/EyeOff toggle, Remember me checkbox "Remember me (30 days)", hidden error with Shield icon), submit "Login" button, 2 cross-links ("Don't have an account? Register", "Forgot Password?"), 3 error messages ("Something went wrong.", "Network error. Please try again."). RegisterForm: 5 fields (Display name "up to 20 chars" placeholder "ViperStrike" maxLength 20, Email with Mail icon placeholder "you@arena.gg", Password "min 6 chars" minLength 6 with strength indicator showing "Strength: {label}", Confirm Password with Eye/EyeOff toggle, Security PIN "4 digits, optional" maxLength 4 pattern [0-9]{0,4} placeholder "e.g. 1234" helper "Required for password recovery. Keep it safe!"), validation "Passwords do not match." via DOM manipulation, submit "Create Account" button, cross-link "Already have an account? Login". ForgotPasswordForm: 4 fields (Email placeholder "you@arena.gg", "4-Digit Security PIN" required placeholder "1234" helper "This is the PIN you set during registration.", "New Password (min 6 chars)" minLength 6 with Eye/EyeOff toggle, "Confirm New Password" always hidden), 3 error messages ("Passwords do not match.", "Failed to reset password.", "Network error. Please try again."), success state ("Password Reset!" heading, "Your password has been changed..." description, "Back to Login" button with Shield emerald icon), submit "Reset Password" button. All autoComplete values, tabIndex, inputMode, and pattern attributes cataloged. (2) lib/auth.ts — 3 constants (JWT_SECRET fallback, COOKIE_NAME='va_session', SESSION_DAYS=30), SessionPayload interface (5 fields with role union), 9 exported functions (signSession, verifySession, getSession with banned-player check, setSessionCookie with httpOnly/lax/secure, clearSessionCookie, hashPassword bcrypt rounds 10, verifyPassword, generateUserTag VENOM-NNNN, generateUniqueUserTag 20 retries). (3) lib/constants.ts — DEFAULT_UNLOCKED_SKINS=['skin-default','trail-none','death-default']. (4) lib/oauth.ts — OAUTH_PROVIDERS constant, OAuthProvider/OAuthUserInfo/OAuthConfig interfaces, 7 exported functions (getRedirectUri, getProviderConfig, getAuthorizationUrl, exchangeCodeForTokens, getUserInfo with Apple JWT decode, getSetupGuide, isProviderConfigured), 3 provider configs with exact URLs/scopes, 3 console error templates, 3 setup guide strings. (5) lib/api-helpers.ts — requireAuth function returning 'Not authenticated.' at 401. (6) lib/game-config-db.ts — GameConfigEntry interface, DEFAULT_GAME_CONFIG with 40 entries across 9 categories (snake_physics 10, snake_growth 4, boost_system 2, collision 4, food_system 11, extraction 2, spawning 4, map_settings 4, bot_settings 3, economy 3), 3 exported functions (seedGameConfig, getGameConfig, getGameConfigValue). (7) lib/player-helpers.ts — 3 exported functions (toProfile mapping 30 Player→PlayerProfile fields, encodeSkins with Set dedup, getFirstAdmin). (8) lib/date-utils.ts — 5 exported functions (utcToday, utcMonday, utcYesterday, utcLastMonday, internal fmt). (9) lib/db.ts — PrismaClient singleton with dev query logging. (10) lib/utils.ts — cn() Tailwind class merger. (11) hooks/use-mobile.ts — useIsMobile() hook, MOBILE_BREAKPOINT=768. (12) hooks/use-toast.ts — useToast/reducer/toast exports, TOAST_LIMIT=1, TOAST_REMOVE_DELAY=1000000, 4 action types, full reducer logic. Master text inventory of all 42+ user-facing strings appended.
+
+---
+
+## Task sc-1: Championships Panel Screen Content Walkthrough
+
+- **Files:** `/tmp/venom-arena/src/components/panels/championships.tsx` (440 lines) + `/tmp/venom-arena/src/lib/game-config.ts` (1196 lines)
+- **Output:** `/home/z/my-project/screen-content/championships.md`
+- **Status:** Complete
+- **Summary:** Full visual mockup walkthrough of the Championships panel as seen on screen. Documented: hero banner with 2 badges, heading, paragraph; live countdown timer (4 boxes) to Jan 1 2027; player dossier section with progress bar, competing wallet chips, registration status, and conditional join/play buttons; 4 prize tier cards from CHAMPIONSHIP_PRIZE_TIERS config (Rank 1, Ranks 2-10, Ranks 11-50, Ranks 51-100) each with badge, title, chips (INR formatted), crown title, item reward, and HOF induction line; 3 scope tabs (Global/Regional/National); region and country dropdown filters; 5 rank filter buttons (All Ranks, Rank 1, Ranks 2-10, Ranks 11-50, Ranks 51-100); standings table with 12-col grid header and 14 initial contender rows (re-sorted by walletChips at runtime). Also fully documented all requested config data objects: CHAMPIONSHIP_PRIZE_TIERS (4 tiers), INITIAL_CONTENDERS (14 contenders), HALL_OF_FAME_TIERS (6 tiers), SEASON PASS (20 free + 20 elite rewards + cost), SAMPLE_CLIPS (3 clips), SOCIAL data (4 friends, 3 rivals, 12 community players, 2 public clans, 11 country filters). Noted behavior quirks: ranks are re-assigned at runtime, player injected at rank 142 (overridden by sort), HOF badge shown unconditionally on every row, Indian number formatting via fmtINR().
+
+---
+
+## Task sc-2: Screen content — Hall of Fame panel
+
+- **File:** `/tmp/venom-arena/src/components/panels/hall-of-fame.tsx` (542 lines)
+- **Config:** `/tmp/venom-arena/src/lib/game-config.ts` — HALL_OF_FAME_TIERS, INITIAL_COMMENTARY, COMMENTARY_NAMES, COUNTRIES, countryFlag/countryName, InspectedPlayer
+- **Primitives:** `/tmp/venom-arena/src/components/panels/_panel-primitives.tsx` — NotSignedIn, MicroLabel, GlowBlob
+- **Output:** `/home/z/my-project/screen-content/hall-of-fame.md`
+- **Status:** Complete
+- **Summary:** Exact visual mockup of the Hall of Fame panel. Documented the NotSignedIn gate, header (Crown icon + title + subtitle), 3-tab bar (Milestone Tiers, Tournament Archives, Live Esports Ticker), persistent LIVE BROADCAST marquee with 3 seed commentary entries and 4 live ticker templates. For Tab 1 (Milestones): info banner, year selector (2022–2026), all 6 tier cards with full data from HALL_OF_FAME_TIERS (badge, name, chips, firstAchiever with flag/name/tag/date, totalAchieversCount, threshold), Season pill, Achieved badge, and View Ranks button. For Tab 2 (Archives): year selector, country dropdown (10 COUNTRY_OPTIONS), Top 100 table with 12-col grid layout, 3 seeded players per country (IN/US/KR), rank medals, NATIONAL CHAMP badge, Inspect buttons. For Tab 3 (Ticker): 4 channel filter buttons, scrolling event list with timestamps, empty state. Tier Top 100 modal: full-screen overlay with 6-column table, rank display logic (crown for #1, medals for #2-#3), special 3-row behavior for t-1crore. Inspect action data shape documented. All chip values use en-IN locale formatting.
+
+---
+
+## sc-3 — Shop & Lab Panel Screen Content
+- **Task:** Document EXACTLY what a user sees on screen when clicking the Shop & Lab panel.
+- **Primary source:** `/tmp/venom-arena/src/components/panels/cosmetics-shop.tsx` (2306 lines)
+- **Data source:** `/tmp/venom-arena/src/lib/game-config.ts` — ALL_COSMETICS (27 items), SLITHER_PRESETS (20 presets), PALETTE_COLORS (18 swatches)
+- **Primitives:** `/tmp/venom-arena/src/components/panels/_panel-primitives.tsx` — PanelSkeleton (6× h-44 pulse bars), NotSignedIn ("Not signed in.")
+- **Output:** `/home/z/my-project/screen-content/shop-and-lab.md`
+- **Status:** Complete
+- **Summary:** Exact visual mockup of the Shop & Lab panel. Documented all pre-render gates (loading skeleton, not-signed-in), the header (ShoppingBag icon + "Identity Workshop & Skin Gallery" H2 + subtitle), 2 view-mode tabs ("🎨 Skin & Effect Gallery" / "🧬 Genetic Pattern Lab"), 7 category filter tabs. View 1 (Gallery): 20 free SLITHER_PRESETS with full names/descriptions/emojis/shapes/tapers/glow per card; 13 premium skins from ALL_COSMETICS with exact id/name/cost/description/emoji/pattern; 3 laser trails; 2 death novas; 6 flags; 3 profile banners — all with exact button states (Equipped / Equip X / Unlock N Chips), badge states (Active / Locked), and card-specific visuals (canvas wiggle preview for skins, pinging dots for trails, Flame icon for deaths, bouncing emoji for flags, gradient bar for banners). View 2 (Genetic Pattern Lab): TryOn Preview 450×180 canvas with "LAB HOLO-PREVIEW (STEER TO TEST)" overlay; Projector Details Card with "GENETIC PROFILE STATS" / "Pattern DNA Engine" H3 / NODES + GLOW stats / Deploy button (two states); Step 1 (Construct Stripe Sequence) with 18 named palette swatches, active color strip with crown node indexing, 4 helper buttons (Double Sequence Length, Mirror Symmetrically, Mutate DNA, Reset); Step 2 (Choose Segment Geometry) with 6 options (Smooth Circles, Dragon Scales, Armored Plates, Crystal Shards, Spiky Obsidian, Basilisk Diamonds); Step 3 (Body Taper Physics) with 4 taper options (Natural Taper, Uniform Width, Sinuous Wave, Heavy Head); Step 4 (Bioluminescent Aura) with Neon Glow toggle switch. All 22 toast notification messages documented with trigger conditions and types.
+
+---
+
+## sc-4 — Dossier (Player Profile) Panel Screen Content
+- **Task:** Document EXACTLY what a user sees on screen when clicking the Dossier (Player Profile) panel.
+- **Primary source:** `/tmp/venom-arena/src/components/panels/player-profile.tsx` (2360 lines)
+- **Data source:** `/tmp/venom-arena/src/lib/game-config.ts` — ARENA_TIERS (30 tiers), COUNTRIES array, getCosmeticById
+- **Primitives:** `/tmp/venom-arena/src/components/panels/_panel-primitives.tsx` — PanelSkeleton (1× h-48 + 2× h-40), NotSignedIn ("Not signed in.")
+- **Output:** `/home/z/my-project/screen-content/dossier.md`
+- **Status:** Complete
+- **Summary:** Exact visual mockup of the Dossier (Player Profile) panel — the largest panel at 2360 lines. Documented all pre-render gates (loading skeleton, not-signed-in). Header section: avatar (custom image / preset emoji / equipped skin fallback with level badge), player name with country flag + code badge, edit button, Ledger Tag + Global Standing #999, 3 conditional social badges (Instagram/YouTube/Twitch), level progress bar with XP, Sign Out button. 4-tab navigation: "Records & Statistics" / "Match History Ledger" / "Friends & Spectate (N)" / "Identity Anti-Tamper Logs". Tab 1 (Stats): conditional Guest Upgrade Banner (collapsed + expanded form with 4 fields), conditional Identity Editor (Challenger Handle input, Faction Region dropdown with all COUNTRIES, avatar drag-drop zone with 3 states, 8 preset emblems, 3 social channel inputs, Cyber Handshake Warning), 8 stat cards (Banked Wallet, Tournament Kills, K/D Ratio, Extraction Rate, Survival Streak, Record Extraction, Lifetime Retained, Total Forfeited), Annual Tournament Guardrails section with 3 cap cards (Matches Allowed, Annual Buy Cap, Rewarded Ads Today), conditional Security Settings card (registered accounts only — Change Password form + Security PIN form with set/change states), Challenger Standing Rating info banner. Tab 2 (History): header with "Showing last 25 operations", empty state, 7-column match history table with arena name + ONLINE/PRACTICE badge, EXTRACTED/COLLIDED status badge, chips outcome with +/- prefix and color, kills, tail score, time elapsed with clock icon, timestamp. Tab 3 (Friends): section header with description, add-friend form (input + Sync Ally button), friend card grid with avatar + status dot (4 colors), name/tag/level/status, conditional action buttons (Spectate for in-match, Invite for online/idle, Gift/Gifted with disabled states, Dismantle Alliance trash icon), Co-Op Lobby Invite modal (full-screen overlay, 2 balance cards, arena stakes list from 30 ARENA_TIERS with 3 eligibility pills, speech bubble with counter-proposal Accept button, Cancel + Send buttons). Tab 4 (Identity Logs): info banner about CHALLENGER REGISTRY LEDGER, empty state, log entries with TAG REGISTERED → arrows, REGION ALIGNMENT → arrows, HANDSHAKE TIMESTAMP, status badge (VERIFIED/APPROVED/FIRST_HANDSHAKE). All 27+ toast/notification messages catalogued with trigger/type. Seed data: 4 initial friends, 3 sample matches, 1 initial identity log entry. 8 preset avatar options documented.
+
+---
+
+## Task sc-5: Screen Content — Leaderboards Panel
+
+- **File:** `/tmp/venom-arena/src/components/panels/leaderboards.tsx` (830 lines)
+- **Data sources:** `/tmp/venom-arena/src/lib/game-config.ts` — COUNTRIES (208 entries), MILESTONE_TIERS (8 entries), MOCK_LEADERBOARD (10 entries), milestoneTierForChips(), countryFlag(), countryName(), InspectedPlayer interface
+- **Type source:** `/tmp/venom-arena/src/lib/types.ts` — LeaderboardEntry interface
+- **Primitives:** `/tmp/venom-arena/src/components/panels/_panel-primitives.tsx` — NotSignedIn ("Not signed in."), MicroLabel, GlowBlob
+- **Output:** `/home/z/my-project/screen-content/leaderboards.md`
+- **Status:** ✅ Complete
+- **Summary:** Exhaustive visual mockup of the Leaderboards panel. Documented the signed-out gate (NotSignedIn), header section (2 status badges, title with Trophy icon, subtitle, last-sync MicroLabel, Refresh button with loading spinner), Your Rank summary card (5-column grid: Global Rank, National Rank, Milestone Badge, Banked Chips, Level — each with conditional loading/null states), 4-tab navigation bar (Summit/Global/National/Tiers with colored icons). Summit tab: info banner about World Cup Summit mechanic, table with columns Global Rank/Country #1 Champion/Nation/Banked Chips, medals for top-3, YOU badge, per-country champions. Global tab: competitor count line, table with Global Rank/Player & User Tag/Milestone Badge/Banked Chips, tier-colored badge pills, loading spinner state. National tab: country dropdown (208 countries), search input with placeholder, table with National Rank/Local Challenger/Level/Banked Chips, violet-themed YOU badge, empty state with country name. Tiers tab: info banner about Milestone Tier Ranking, 9 filter pill buttons (All/Rookie×2/Omega/Diamond/Platinum/Gold/Silver/Bronze with badge text and per-tier colors), table with Tier Rank/Player Name & User Tag/Country/Banked Chips, yellow-themed YOU badge, tier-specific seed data (Omega=3 entries, Rookie=100, others=100 each with first achiever). Player Inspector click behavior documented (fires onInspectPlayer callback with hardcoded clanTag/clanName/achievedAt + dynamic rank calculations). Auto-refresh: 30-minute polling of /api/leaderboard, manual Refresh button. 4 empty states documented. Visual differences table for YOU badge colors across tabs.
+
+---
+
+## Task sc-6: Screen Content Documentation — Arena Selector + Chip Store + Daily Rewards
+
+- **Files read:**
+  - `/tmp/venom-arena/src/components/panels/arena-selector.tsx` (491 lines)
+  - `/tmp/venom-arena/src/components/panels/chip-store.tsx` (404 lines)
+  - `/tmp/venom-arena/src/components/panels/daily-rewards.tsx` (240 lines)
+  - `/tmp/venom-arena/src/components/panels/_panel-primitives.tsx` (208 lines)
+  - `/tmp/venom-arena/src/lib/game-config.ts` (1196 lines) — ARENA_TIERS, PRACTICE_TIERS, CHIP_PACKS, DAILY_REWARDS, PROMO_CODES, MAX_YEARLY_BUY_CHIPS, MAX_DAILY_ADS, AD_REWARD_CHIPS
+- **Outputs written:**
+  - `/home/z/my-project/screen-content/arena-selector.md` — 30 online tiers (all names, buy-ins, XP multis, descriptions), 3 practice tiers, online/offline toggle, 6 difficulty filter tabs with counts, live player count polling, commission rules (0%/35%), join button text (3 states: affordable/unaffordable/practice), error toast, highest affordable jump link
+  - `/home/z/my-project/screen-content/vault-chip-store.md` — 10 chip packs (names, prices INR/USD, chip amounts, bonus labels, descriptions, emojis), promo code section (VENOM +500c, CHAMPION +1000c), 12/day ad reward section, yearly 25L cap with lock alert, compliance notice, 3 button states (buy/locked/loading), all toast messages
+  - `/home/z/my-project/screen-content/claims-daily-rewards.md` — 7-day cycle (10,20,50,100,250,500,1000c), streak display, 3 day cell states (today/claimed/future), 2 claim buttons (standard + 2x ad), already-claimed timer (HH:MM:SS), all toast messages
+- **Status:** Complete
+
+---
+
+## Task sc-7: Screen Content — Social, Clan System, Season Pass, Highlights
+
+- **Files read:**
+  - `/tmp/venom-arena/src/components/panels/social-panel.tsx` (1322 lines)
+  - `/tmp/venom-arena/src/components/panels/clan-system.tsx` (784 lines)
+  - `/tmp/venom-arena/src/components/panels/season-pass.tsx` (254 lines)
+  - `/tmp/venom-arena/src/components/panels/clip-showcase.tsx` (269 lines)
+  - `/tmp/venom-arena/src/lib/game-config.ts` (1195 lines) — SEASON_PASS data, SAMPLE_CLIPS, PUBLIC_CLANS, SOCIAL_COUNTRY_FILTER, ARENA_TIERS, PRESET_EMBLEMS, BOT_REPLIES
+
+- **Outputs written:**
+  - `/home/z/my-project/screen-content/friends-and-search.md` — 2 top-level tabs (Friends & Global Search, Competitive Syndicate), 3 sub-tabs (My Friends, My Rivals, Search Global Players), friend cards with 5 action buttons (Claim Gift/Spectate/Invite/Send Gift/Remove), rival cards with HUNT button + head-to-head record + arena table, pending request cards (incoming Accept/Decline, outgoing Pending badge), global player list with 3 right-side states (self/connected/connect), 11 country filter options, 2 PUBLIC_CLANS data cards, Co-Op Invite Modal (30 arena tiers, dual balance display, 3 eligibility badges, fallback proposal), Create Clan Modal (4 form fields + 10 emblem buttons), all empty states and loading spinners, full toast table (22+ messages)
+  - `/home/z/my-project/screen-content/syndicates.md` — 3 tabs (My Clan, Browse Clans, Form Syndicate), My Clan with/not-with-clan branches, 3 stat columns (Rank/Members/Level), treasury deposit section, 3 perks cards, member roster with LEADER badge + Inspect button, chat feed with 3 branches (loading/empty/messages), Browse tab with search + 3 card states (join/already member/disabled), empty clans state, Form tab with 4 fields + 6-option emblem dropdown, full toast table (15+ messages)
+  - `/home/z/my-project/screen-content/pass.md` — Season banner (SEASON 01: VENOM GENESIS, 48 days remaining), Pass Status card (Free/Elite 2 branches, 1,00,000c unlock cost), XP progress bar (indigo→purple→pink gradient), all 20 tier cards with both Free and Elite tracks, exact reward names/icons/categories for all 40 items (20 free + 20 elite), 4 button states per track, all toast messages
+  - `/home/z/my-project/screen-content/highlights.md` — Panel header with Share Game Clip button, clip card anatomy (thumbnail with platform badge + chips badge + play icon, body with title/creator/tags, footer with upvote + watch), all 3 SAMPLE_CLIPS rendered as exact visual mockups (titles, creators, tags, upvotes, dates, chips, platforms), Upload Modal (4 fields: title, platform dropdown, chips, URL), upvote 2-state button, all toast messages
+
+- **Status:** Complete
+
+---
+
+## Task sc-8: Screen Content — Admin, Player Inspector, Auth Screens
+
+- **Files read:**
+  - `/tmp/venom-arena/src/components/panels/admin-panel.tsx` (488 lines)
+  - `/tmp/venom-arena/src/components/panels/player-inspector-modal.tsx` (560 lines)
+  - `/tmp/venom-arena/src/components/auth/auth-gate.tsx` (746 lines)
+  - `/tmp/venom-arena/src/components/panels/_panel-primitives.tsx` (208 lines) — MicroLabel, NotSignedIn
+
+- **Outputs written:**
+  - `/home/z/my-project/screen-content/admin.md` — 3 screen states (Role Guard, Central Operations Gate, full 3-column dashboard). System Diagnostics column (Connected Sockets + Active Rooms, Global Intercom Broadcast, Syslog Monitor). Roster column (search, player rows with 4 action buttons, Economy Ledger Overrides). Full toast message table (12 entries).
+  - `/home/z/my-project/screen-content/player-inspector.md` — Full modal walkthrough: banner, avatar+identity, 4 tabs (Overview, Career Stats, Extraction Logs, Loadout), 3 action buttons with state variants. Full toast table (4 entries).
+  - `/home/z/my-project/screen-content/auth-screens.md` — Loading skeleton, Auth Screen (logo+tagline, card, tabs, social buttons, guest play), Login form, Register form (with password strength indicator), Forgot Password modal (form + success state). Complete reference tables for all errors, placeholders, labels, buttons, links, dividers.
+
+---
+
+## Task sc-9: Document Game Canvas HUD + Death/Extract Overlay
+
+- **Sources read:**
+  - `/tmp/venom-arena/src/components/game/game-canvas.tsx` (3152 lines)
+  - `/tmp/venom-arena/src/components/game/render-helpers.ts` (1218 lines)
+  - `/tmp/venom-arena/src/components/game/online-replay-player.tsx` (357 lines)
+
+- **Output written:**
+  - `/home/z/my-project/screen-content/game-hud.md` — 10 sections covering: (1) Connecting overlay (2 variants), (2) Reconnecting banner, (3) In-game HUD with 11 subsections (top-left cards, top-right banked/FPS/ping, chat+minimap row, arena leaderboard expanded/collapsed with online/offline format differences, kill feed wall vs eliminated formats, extraction hint+progress+commission, bottom BOOST/EXTRACT/LEAVE buttons, emotes bar 5 emotes with keys 1-5, minimap canvas-drawn radar, full arena map M-key toggle, chat dialog), (4) Toast notifications (14 entries), (5) Death overlay (title, 2 subtitle variants, 2 stats panel variants, killer card with 3 social buttons for real players, replay button, pending message, 3 action buttons), (6) Extract overlay (3 title variants, 3 subtitle variants, 3-column stats grid, 2 results table variants, banked+level panel, pending message, 3 action buttons with label variants), (7) Offline replay player (embedded canvas with 6 controls), (8) Online replay player (full-screen auto-hiding controls with 8 buttons + death marker + minimap), (9) Offline mode note, (10) Complete element inventory table (40+ rows). Canvas-drawn elements documented: snake names, [BOT] prefix, #tag, chat bubbles, star chip value labels, extraction ring.
+
+- **Status:** Complete
+
+---
+
+## Task sc-10b: Complete game-rules-modal screen content
+
+- **Source file:** `/tmp/venom-arena/src/components/modals/game-rules-modal.tsx` (850 lines)
+- **Output file:** `/home/z/my-project/screen-content/game-rules-modal.md`
+- **Status:** ✅ Complete
+- **Summary:** Overwrote previously incomplete file (which cut off at Section 7) with the COMPLETE visual screen walkthrough covering ALL 14 numbered sections (0–13) plus unnumbered Arena Tiers (30-row table), Practice Tiers (3-row table), Hero Banner, Footer, and Footer Action Bar. Documented every section heading, paragraph, bullet point, table row (30 arena tiers, 3 practice tiers, 7 milestone badges, 4 challenge level tiers), all 19 FAQ Q&A items, all emotes, badges, numbers, button labels, and sub-component structures. Cross-referenced `@/lib/game-config.ts` for ARENA_TIERS (30 rows) and PRACTICE_TIERS (3 rows) data. Noted 3 unused lucide-react imports (Compass, Sparkles, Medal) and unused MILESTONE_TIERS config import.
+
+---
+
+## Task dashboard: Document Dashboard screen (default post-login view)
+
+- **Source file:** `/tmp/venom-arena/src/app/page.tsx` (1053 lines)
+- **Output file:** `/home/z/my-project/screen-content/dashboard.md`
+- **Status:** ✅ Complete
+- **Summary:** Complete visual screen walkthrough of the Dashboard (Lobby Headquarters) — the default view after login. Documented: (1) Sticky header with 4 controls (logo/title, player badge with avatar+level+name, chips wallet with Secure Chips label and pulse-animated icon, Rules & Guide button, Sign Out button), (2) Hero banner with Lobby Headquarters label, WELCOME BACK heading (dynamic name), XP progress bar (computed from xpForLevel curve), and LAUNCH MATCHMAKER button, (3) All 12 Bento Gate cards with exact badge/title/description/footLeft/footRight text, accent colors, icon, and tab targets (including wide Gate 12), (4) BentoGate component structure and full 11-row accent color class reference table, (5) Tactical Challenges sidebar panel with header (tier badge in 4 color variants, streak multiplier indicator), daily/weekly challenge card structures with 3-state progress bars and 3-state claim buttons, last match summary card, (6) All 13 sidebar tabs with exact labels, icons, active color classes, and admin-only filtering, (7) Sub-page navigation bar with back button and breadcrumb, (8) Tab-to-component mapping table, (9) Footer with copyright and version info, (10) Pre-dashboard states (loading, auth gate, in-game), (11) Imports inventory (20 lucide icons, 12 panel components, 2 modals).
