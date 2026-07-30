@@ -1,0 +1,747 @@
+     1→'use client';
+     2→
+     3→import { useState } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Input } from '@/components/ui/input';
+     6→import { Label } from '@/components/ui/label';
+     7→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+     8→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+     9→import { Skeleton } from '@/components/ui/skeleton';
+    10→import {
+    11→  Dialog,
+    12→  DialogContent,
+    13→  DialogHeader,
+    14→  DialogTitle,
+    15→  DialogDescription,
+    16→} from '@/components/ui/dialog';
+    17→import { useAuth } from '@/components/providers/auth-provider';
+    18→import { GameRulesModal } from '@/components/modals/game-rules-modal';
+    19→import {
+    20→  Skull,
+    21→  Zap,
+    22→  LogIn,
+    23→  UserPlus,
+    24→  Ghost,
+    25→  Loader2,
+    26→  Eye,
+    27→  EyeOff,
+    28→  BookOpen,
+    29→  KeyRound,
+    30→  Mail,
+    31→  Shield,
+    32→} from 'lucide-react';
+    33→
+    34→// ---------------------------------------------------------------------------
+    35→// Password strength calculator
+    36→// ---------------------------------------------------------------------------
+    37→function getPasswordStrength(pw: string): { label: string; color: string; width: string; score: number } {
+    38→  let score = 0;
+    39→  if (pw.length >= 6) score++;
+    40→  if (pw.length >= 10) score++;
+    41→  if (/[A-Z]/.test(pw)) score++;
+    42→  if (/[0-9]/.test(pw)) score++;
+    43→  if (/[^A-Za-z0-9]/.test(pw)) score++;
+    44→
+    45→  if (score <= 1) return { label: 'Weak', color: 'bg-red-500', width: 'w-1/4', score };
+    46→  if (score <= 2) return { label: 'Fair', color: 'bg-orange-500', width: 'w-2/4', score };
+    47→  if (score <= 3) return { label: 'Good', color: 'bg-yellow-500', width: 'w-3/4', score };
+    48→  return { label: 'Strong', color: 'bg-emerald-500', width: 'w-full', score };
+    49→}
+    50→
+    51→// ---------------------------------------------------------------------------
+    52→// AuthGate — loading skeleton → AuthScreen
+    53→// ---------------------------------------------------------------------------
+    54→export default function AuthGate() {
+    55→  const { loading } = useAuth();
+    56→  if (loading) {
+    57→    return (
+    58→      <div className="min-h-screen flex items-center justify-center">
+    59→        <div className="flex flex-col items-center gap-3">
+    60→          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    61→          <p className="text-sm text-muted-foreground">Loading arena…</p>
+    62→        </div>
+    63→      </div>
+    64→    );
+    65→  }
+    66→  return <AuthScreen />;
+    67→}
+    68→
+    69→// ---------------------------------------------------------------------------
+    70→// AuthScreen — main auth page with all tabs, social buttons, forgot password
+    71→// ---------------------------------------------------------------------------
+    72→function AuthScreen() {
+    73→  const { refresh } = useAuth();
+    74→  const [busy, setBusy] = useState(false);
+    75→  const [error, setError] = useState<string | null>(null);
+    76→  const [forgotOpen, setForgotOpen] = useState(false);
+    77→  const [rulesOpen, setRulesOpen] = useState(false);
+    78→
+    79→  // Per-tab error handling — clear error when switching tabs
+    80→  function handleTabChange(value: string) {
+    81→    setError(null);
+    82→  }
+    83→
+    84→  async function callApi(path: string, body: unknown) {
+    85→    setBusy(true);
+    86→    setError(null);
+    87→    try {
+    88→      const res = await fetch(path, {
+    89→        method: 'POST',
+    90→        headers: { 'Content-Type': 'application/json' },
+    91→        body: JSON.stringify(body),
+    92→      });
+    93→      const data = await res.json().catch(() => ({}));
+    94→      if (!res.ok) {
+    95→        setError(data?.error || 'Something went wrong.');
+    96→        return false;
+    97→      }
+    98→      await refresh();
+    99→      return true;
+   100→    } catch {
+   101→      setError('Network error. Please try again.');
+   102→      return false;
+   103→    } finally {
+   104→      setBusy(false);
+   105→    }
+   106→  }
+   107→
+   108→  function handleSocialLogin(provider: string) {
+   109→    setError(null);
+   110→    // Redirect to the server-side OAuth initiation
+   111→    window.location.href = `/api/auth/social-login?provider=${provider}`;
+   112→  }
+   113→
+   114→  return (
+   115→    <div className="min-h-screen flex items-center justify-center p-4">
+   116→      <div className="w-full max-w-md space-y-6">
+   117→        {/* Logo / Title */}
+   118→        <div className="text-center space-y-2">
+   119→          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/15 border border-primary/30 va-neon-border">
+   120→            <Skull className="w-9 h-9 text-primary va-neon-text" />
+   121→          </div>
+   122→          <h1 className="text-4xl font-black tracking-tight va-neon-text">VENOM ARENA</h1>
+   123→          <p className="text-sm text-muted-foreground">
+   124→            Hunt. Harvest. Extract. <span className="text-primary font-semibold">Don&apos;t get caught.</span>
+   125→          </p>
+   126→        </div>
+   127→
+   128→        <Card className="border-primary/20 bg-card/80 backdrop-blur">
+   129→          <CardHeader>
+   130→            <CardTitle className="text-lg">Enter the arena</CardTitle>
+   131→            <CardDescription>Sign in or create an account to play.</CardDescription>
+   132→          </CardHeader>
+   133→          <CardContent>
+   134→            <Tabs defaultValue="login" className="w-full" onValueChange={handleTabChange}>
+   135→              <TabsList className="grid w-full grid-cols-2">
+   136→                <TabsTrigger value="login">
+   137→                  <LogIn className="w-4 h-4 mr-2" />
+   138→                  Login
+   139→                </TabsTrigger>
+   140→                <TabsTrigger value="register">
+   141→                  <UserPlus className="w-4 h-4 mr-2" />
+   142→                  Register
+   143→                </TabsTrigger>
+   144→              </TabsList>
+   145→
+   146→              <TabsContent value="login" className="mt-4">
+   147→                <LoginForm busy={busy} error={error} onSubmit={callApi} onForgotPassword={() => { setError(null); setForgotOpen(true); }} />
+   148→              </TabsContent>
+   149→
+   150→              <TabsContent value="register" className="mt-4">
+   151→                <RegisterForm busy={busy} error={error} onSubmit={callApi} />
+   152→              </TabsContent>
+   153→            </Tabs>
+   154→
+   155→            {/* Divider */}
+   156→            <div className="relative my-4">
+   157→              <div className="absolute inset-0 flex items-center">
+   158→                <span className="w-full border-t border-border" />
+   159→              </div>
+   160→              <div className="relative flex justify-center">
+   161→                <span className="bg-card px-2 text-xs text-muted-foreground">or continue with</span>
+   162→              </div>
+   163→            </div>
+   164→
+   165→            {/* Social Login Buttons */}
+   166→            <div className="grid grid-cols-3 gap-2">
+   167→              <Button
+   168→                variant="outline"
+   169→                className="w-full text-xs"
+   170→                disabled={busy}
+   171→                onClick={() => handleSocialLogin('google')}
+   172→              >
+   173→                {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : (
+   174→                  <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24">
+   175→                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+   176→                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+   177→                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+   178→                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+   179→                  </svg>
+   180→                )}
+   181→                Google
+   182→              </Button>
+   183→              <Button
+   184→                variant="outline"
+   185→                className="w-full text-xs"
+   186→                disabled={busy}
+   187→                onClick={() => handleSocialLogin('facebook')}
+   188→              >
+   189→                {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : (
+   190→                  <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="#1877F2">
+   191→                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+   192→                  </svg>
+   193→                )}
+   194→                Facebook
+   195→              </Button>
+   196→              <Button
+   197→                variant="outline"
+   198→                className="w-full text-xs"
+   199→                disabled={busy}
+   200→                onClick={() => handleSocialLogin('apple')}
+   201→              >
+   202→                {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : (
+   203→                  <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+   204→                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+   205→                  </svg>
+   206→                )}
+   207→                Apple
+   208→              </Button>
+   209→            </div>
+   210→
+   211→            {/* Divider */}
+   212→            <div className="relative my-4">
+   213→              <div className="absolute inset-0 flex items-center">
+   214→                <span className="w-full border-t border-border" />
+   215→              </div>
+   216→              <div className="relative flex justify-center">
+   217→                <span className="bg-card px-2 text-xs text-muted-foreground">or</span>
+   218→              </div>
+   219→            </div>
+   220→
+   221→            {/* Guest Play */}
+   222→            <Button
+   223→              variant="secondary"
+   224→              className="w-full"
+   225→              disabled={busy}
+   226→              onClick={async () => {
+   227→                await callApi('/api/auth/guest', {});
+   228→              }}
+   229→            >
+   230→              {busy ? (
+   231→                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+   232→              ) : (
+   233→                <Ghost className="w-4 h-4 mr-2" />
+   234→              )}
+   235→              Play as Guest
+   236→            </Button>
+   237→
+   238→            {/* Bottom info */}
+   239→            <div className="mt-3 space-y-2">
+   240→              <p className="text-[11px] text-muted-foreground text-center">
+   241→                <Zap className="w-3 h-3 inline mr-1" />
+   242→                Guests get 150 starter chips. Register to keep your progress.
+   243→              </p>
+   244→
+   245→              {/* View Rules & Guide link */}
+   246→              <div className="text-center">
+   247→                <button
+   248→                  type="button"
+   249→                  onClick={() => setRulesOpen(true)}
+   250→                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 underline-offset-2 hover:underline cursor-pointer"
+   251→                >
+   252→                  <BookOpen className="w-3 h-3" />
+   253→                  View Rules &amp; Guide
+   254→                </button>
+   255→              </div>
+   256→            </div>
+   257→          </CardContent>
+   258→        </Card>
+   259→
+   260→        {/* Game Rules Modal */}
+   261→        <GameRulesModal isOpen={rulesOpen} onClose={() => setRulesOpen(false)} />
+   262→
+   263→        {/* Forgot Password Modal */}
+   264→        <Dialog open={forgotOpen} onOpenChange={(open) => { setForgotOpen(open); setError(null); }}>
+   265→          <DialogContent className="bg-card border-border max-w-sm">
+   266→            <DialogHeader>
+   267→              <DialogTitle className="flex items-center gap-2">
+   268→                <KeyRound className="w-4 h-4 text-primary" />
+   269→                Reset Password
+   270→              </DialogTitle>
+   271→              <DialogDescription className="text-xs">
+   272→                Enter your email and 4-digit Security PIN to set a new password.
+   273→              </DialogDescription>
+   274→            </DialogHeader>
+   275→            <ForgotPasswordForm
+   276→              busy={busy}
+   277→              error={error}
+   278→              onSuccess={() => {
+   279→                setForgotOpen(false);
+   280→                setError(null);
+   281→              }}
+   282→            />
+   283→          </DialogContent>
+   284→        </Dialog>
+   285→      </div>
+   286→    </div>
+   287→  );
+   288→}
+   289→
+   290→// ---------------------------------------------------------------------------
+   291→// LoginForm
+   292→// ---------------------------------------------------------------------------
+   293→function LoginForm({
+   294→  busy,
+   295→  error,
+   296→  onSubmit,
+   297→  onForgotPassword,
+   298→}: {
+   299→  busy: boolean;
+   300→  error: string | null;
+   301→  onSubmit: (path: string, body: unknown) => Promise<boolean>;
+   302→  onForgotPassword: () => void;
+   303→}) {
+   304→  const [email, setEmail] = useState('');
+   305→  const [password, setPassword] = useState('');
+   306→  const [showPassword, setShowPassword] = useState(false);
+   307→  const [remember, setRemember] = useState(false);
+   308→
+   309→  return (
+   310→    <form
+   311→      onSubmit={async (e) => {
+   312→        e.preventDefault();
+   313→        await onSubmit('/api/auth/login', { email, password, remember });
+   314→      }}
+   315→      className="space-y-3"
+   316→    >
+   317→      <div className="space-y-1.5">
+   318→        <Label htmlFor="l-email" className="text-xs">Email</Label>
+   319→        <div className="relative">
+   320→          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+   321→          <Input
+   322→            id="l-email"
+   323→            type="email"
+   324→            required
+   325→            autoComplete="email"
+   326→            value={email}
+   327→            onChange={(e) => setEmail(e.target.value)}
+   328→            placeholder="you@arena.gg"
+   329→            className="pl-8 text-sm"
+   330→          />
+   331→        </div>
+   332→      </div>
+   333→      <div className="space-y-1.5">
+   334→        <Label htmlFor="l-pass" className="text-xs">Password</Label>
+   335→        <div className="relative">
+   336→          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+   337→          <Input
+   338→            id="l-pass"
+   339→            type={showPassword ? 'text' : 'password'}
+   340→            required
+   341→            autoComplete="current-password"
+   342→            value={password}
+   343→            onChange={(e) => setPassword(e.target.value)}
+   344→            placeholder="••••••••"
+   345→            className="pl-8 pr-9 text-sm"
+   346→          />
+   347→          <button
+   348→            type="button"
+   349→            tabIndex={-1}
+   350→            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+   351→            onClick={() => setShowPassword(!showPassword)}
+   352→          >
+   353→            {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+   354→          </button>
+   355→        </div>
+   356→      </div>
+   357→
+   358→      {/* Remember me */}
+   359→      <div className="flex items-center gap-2">
+   360→        <input
+   361→          type="checkbox"
+   362→          id="l-remember"
+   363→          checked={remember}
+   364→          onChange={(e) => setRemember(e.target.checked)}
+   365→          className="rounded border-border"
+   366→        />
+   367→        <Label htmlFor="l-remember" className="text-[11px] text-muted-foreground cursor-pointer">
+   368→          Remember me (30 days)
+   369→        </Label>
+   370→      </div>
+   371→
+   372→      {error && <p className="text-xs text-destructive flex items-center gap-1"><Shield className="w-3 h-3" /> {error}</p>}
+   373→
+   374→      <Button type="submit" className="w-full" disabled={busy}>
+   375→        {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+   376→        Login
+   377→      </Button>
+   378→
+   379→      {/* Cross-links */}
+   380→      <div className="flex justify-between items-center">
+   381→        <button
+   382→          type="button"
+   383→          className="text-[11px] text-primary hover:text-primary/80 underline-offset-2 hover:underline cursor-pointer"
+   384→          onClick={() => {
+   385→            // Switch to register tab
+   386→            const tabList = document.querySelector('[role="tablist"]');
+   387→            if (tabList) {
+   388→              const registerTab = tabList.querySelectorAll('[role="tab"]')[1] as HTMLElement;
+   389→              registerTab?.click();
+   390→            }
+   391→          }}
+   392→        >
+   393→          Don&apos;t have an account? <span className="font-semibold">Register</span>
+   394→        </button>
+   395→        <button
+   396→          type="button"
+   397→          className="text-[11px] text-primary hover:text-primary/80 underline-offset-2 hover:underline cursor-pointer"
+   398→          onClick={onForgotPassword}
+   399→        >
+   400→          Forgot Password?
+   401→        </button>
+   402→      </div>
+   403→    </form>
+   404→  );
+   405→}
+   406→
+   407→// ---------------------------------------------------------------------------
+   408→// RegisterForm
+   409→// ---------------------------------------------------------------------------
+   410→function RegisterForm({
+   411→  busy,
+   412→  error,
+   413→  onSubmit,
+   414→}: {
+   415→  busy: boolean;
+   416→  error: string | null;
+   417→  onSubmit: (path: string, body: unknown) => Promise<boolean>;
+   418→}) {
+   419→  const [name, setName] = useState('');
+   420→  const [email, setEmail] = useState('');
+   421→  const [password, setPassword] = useState('');
+   422→  const [confirmPassword, setConfirmPassword] = useState('');
+   423→  const [showPassword, setShowPassword] = useState(false);
+   424→  const [showConfirm, setShowConfirm] = useState(false);
+   425→  const [pin, setPin] = useState('');
+   426→
+   427→  const strength = getPasswordStrength(password);
+   428→
+   429→  function handleSubmit(e: React.FormEvent) {
+   430→    e.preventDefault();
+   431→    if (password !== confirmPassword) {
+   432→      // Manually set error through parent — we can't call setError from here
+   433→      // so we use a temporary approach
+   434→      const errEl = document.querySelector('[data-register-error]');
+   435→      if (errEl) errEl.textContent = 'Passwords do not match.';
+   436→      return;
+   437→    }
+   438→    const errEl = document.querySelector('[data-register-error]');
+   439→    if (errEl) errEl.textContent = '';
+   440→    onSubmit('/api/auth/register', { name, email, password, pin });
+   441→  }
+   442→
+   443→  return (
+   444→    <form onSubmit={handleSubmit} className="space-y-3">
+   445→      <div className="space-y-1.5">
+   446→        <Label htmlFor="r-name" className="text-xs">Display name (up to 20 chars)</Label>
+   447→        <Input id="r-name" required maxLength={20} value={name} onChange={(e) => setName(e.target.value)} placeholder="ViperStrike" className="text-sm" />
+   448→      </div>
+   449→      <div className="space-y-1.5">
+   450→        <Label htmlFor="r-email" className="text-xs">Email</Label>
+   451→        <div className="relative">
+   452→          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+   453→          <Input
+   454→            id="r-email"
+   455→            type="email"
+   456→            required
+   457→            autoComplete="email"
+   458→            value={email}
+   459→            onChange={(e) => setEmail(e.target.value)}
+   460→            placeholder="you@arena.gg"
+   461→            className="pl-8 text-sm"
+   462→          />
+   463→        </div>
+   464→      </div>
+   465→      <div className="space-y-1.5">
+   466→        <Label htmlFor="r-pass" className="text-xs">Password (min 6 chars)</Label>
+   467→        <div className="relative">
+   468→          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+   469→          <Input
+   470→            id="r-pass"
+   471→            type={showPassword ? 'text' : 'password'}
+   472→            required
+   473→            minLength={6}
+   474→            autoComplete="new-password"
+   475→            value={password}
+   476→            onChange={(e) => setPassword(e.target.value)}
+   477→            placeholder="••••••••"
+   478→            className="pl-8 pr-9 text-sm"
+   479→          />
+   480→          <button
+   481→            type="button"
+   482→            tabIndex={-1}
+   483→            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+   484→            onClick={() => setShowPassword(!showPassword)}
+   485→          >
+   486→            {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+   487→          </button>
+   488→        </div>
+   489→        {/* Password strength indicator */}
+   490→        {password.length > 0 && (
+   491→          <div className="space-y-1">
+   492→            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+   493→              <div className={`h-full ${strength.color} ${strength.width} rounded-full transition-all duration-300`} />
+   494→            </div>
+   495→            <p className="text-[10px] text-muted-foreground">
+   496→              Strength: <span className={strength.score >= 3 ? 'text-emerald-500' : strength.score >= 2 ? 'text-yellow-500' : 'text-red-500'}>{strength.label}</span>
+   497→            </p>
+   498→          </div>
+   499→        )}
+   500→      </div>
+   501→      <div className="space-y-1.5">
+   502→        <Label htmlFor="r-confirm" className="text-xs">Confirm Password</Label>
+   503→        <div className="relative">
+   504→          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+   505→          <Input
+   506→            id="r-confirm"
+   507→            type={showConfirm ? 'text' : 'password'}
+   508→            required
+   509→            minLength={6}
+   510→            autoComplete="new-password"
+   511→            value={confirmPassword}
+   512→            onChange={(e) => {
+   513→              setConfirmPassword(e.target.value);
+   514→              // Clear match error if they now match
+   515→              const errEl = document.querySelector('[data-register-error]');
+   516→              if (errEl && e.target.value === password) errEl.textContent = '';
+   517→            }}
+   518→            placeholder="••••••••"
+   519→            className="pl-8 pr-9 text-sm"
+   520→          />
+   521→          <button
+   522→            type="button"
+   523→            tabIndex={-1}
+   524→            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+   525→            onClick={() => setShowConfirm(!showConfirm)}
+   526→          >
+   527→            {showConfirm ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+   528→          </button>
+   529→        </div>
+   530→      </div>
+   531→      <div className="space-y-1.5">
+   532→        <Label htmlFor="r-pin" className="text-xs">Security PIN (4 digits, optional)</Label>
+   533→        <Input
+   534→          id="r-pin"
+   535→          type="text"
+   536→          inputMode="numeric"
+   537→          maxLength={4}
+   538→          pattern="[0-9]{0,4}"
+   539→          autoComplete="off"
+   540→          value={pin}
+   541→          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+   542→          placeholder="e.g. 1234"
+   543→          className="text-sm"
+   544→        />
+   545→        <p className="text-[10px] text-muted-foreground">
+   546→          Required for password recovery. Keep it safe!
+   547→        </p>
+   548→      </div>
+   549→
+   550→      {error && (
+   551→        <p className="text-xs text-destructive flex items-center gap-1" data-register-error>
+   552→          <Shield className="w-3 h-3 shrink-0" /> {error}
+   553→        </p>
+   554→      )}
+   555→      {!error && (
+   556→        <p className="text-xs text-destructive" data-register-error />
+   557→      )}
+   558→
+   559→      <Button type="submit" className="w-full" disabled={busy}>
+   560→        {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+   561→        Create Account
+   562→      </Button>
+   563→
+   564→      {/* Cross-link to login */}
+   565→      <div className="flex justify-center">
+   566→        <button
+   567→          type="button"
+   568→          className="text-[11px] text-primary hover:text-primary/80 underline-offset-2 hover:underline cursor-pointer"
+   569→          onClick={() => {
+   570→            const tabList = document.querySelector('[role="tablist"]');
+   571→            if (tabList) {
+   572→              const loginTab = tabList.querySelectorAll('[role="tab"]')[0] as HTMLElement;
+   573→              loginTab?.click();
+   574→            }
+   575→          }}
+   576→        >
+   577→          Already have an account? <span className="font-semibold">Login</span>
+   578→        </button>
+   579→      </div>
+   580→    </form>
+   581→  );
+   582→}
+   583→
+   584→// ---------------------------------------------------------------------------
+   585→// ForgotPasswordForm (used inside the Dialog)
+   586→// ---------------------------------------------------------------------------
+   587→function ForgotPasswordForm({
+   588→  busy,
+   589→  error,
+   590→  onSuccess,
+   591→}: {
+   592→  busy: boolean;
+   593→  error: string | null;
+   594→  onSuccess: () => void;
+   595→}) {
+   596→  const [email, setEmail] = useState('');
+   597→  const [securityPin, setSecurityPin] = useState('');
+   598→  const [newPassword, setNewPassword] = useState('');
+   599→  const [confirmNew, setConfirmNew] = useState('');
+   600→  const [localError, setLocalError] = useState<string | null>(null);
+   601→  const [localBusy, setLocalBusy] = useState(false);
+   602→  const [success, setSuccess] = useState(false);
+   603→  const [showNewPassword, setShowNewPassword] = useState(false);
+   604→
+   605→  async function handleSubmit(e: React.FormEvent) {
+   606→    e.preventDefault();
+   607→    setLocalError(null);
+   608→
+   609→    if (newPassword !== confirmNew) {
+   610→      setLocalError('Passwords do not match.');
+   611→      return;
+   612→    }
+   613→
+   614→    setLocalBusy(true);
+   615→    try {
+   616→      const res = await fetch('/api/auth/forgot-password', {
+   617→        method: 'POST',
+   618→        headers: { 'Content-Type': 'application/json' },
+   619→        body: JSON.stringify({ email, securityPin, newPassword }),
+   620→      });
+   621→      const data = await res.json().catch(() => ({}));
+   622→      if (!res.ok) {
+   623→        setLocalError(data?.error || 'Failed to reset password.');
+   624→        return;
+   625→      }
+   626→      setSuccess(true);
+   627→      onSuccess();
+   628→    } catch {
+   629→      setLocalError('Network error. Please try again.');
+   630→    } finally {
+   631→      setLocalBusy(false);
+   632→    }
+   633→  }
+   634→
+   635→  if (success) {
+   636→    return (
+   637→      <div className="text-center py-4 space-y-2">
+   638→        <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
+   639→          <Shield className="w-6 h-6 text-emerald-400" />
+   640→        </div>
+   641→        <p className="text-sm font-semibold text-foreground">Password Reset!</p>
+   642→        <p className="text-xs text-muted-foreground">
+   643→          Your password has been changed. You can now log in with your new password.
+   644→        </p>
+   645→        <Button
+   646→          size="sm"
+   647→          className="mt-2"
+   648→          onClick={onSuccess}
+   649→        >
+   650→          Back to Login
+   651→        </Button>
+   652→      </div>
+   653→    );
+   654→  }
+   655→
+   656→  return (
+   657→    <form onSubmit={handleSubmit} className="space-y-3">
+   658→      <div className="space-y-1.5">
+   659→        <Label htmlFor="fp-email" className="text-xs">Email</Label>
+   660→        <Input
+   661→          id="fp-email"
+   662→          type="email"
+   663→          required
+   664→          value={email}
+   665→          onChange={(e) => setEmail(e.target.value)}
+   666→          placeholder="you@arena.gg"
+   667→          className="text-sm"
+   668→        />
+   669→      </div>
+   670→      <div className="space-y-1.5">
+   671→        <Label htmlFor="fp-pin" className="text-xs">4-Digit Security PIN</Label>
+   672→        <Input
+   673→          id="fp-pin"
+   674→          type="text"
+   675→          inputMode="numeric"
+   676→          required
+   677→          maxLength={4}
+   678→          pattern="[0-9]{4}"
+   679→          autoComplete="off"
+   680→          value={securityPin}
+   681→          onChange={(e) => setSecurityPin(e.target.value.replace(/\D/g, ''))}
+   682→          placeholder="1234"
+   683→          className="text-sm"
+   684→        />
+   685→        <p className="text-[10px] text-muted-foreground">
+   686→          This is the PIN you set during registration.
+   687→        </p>
+   688→      </div>
+   689→      <div className="space-y-1.5">
+   690→        <Label htmlFor="fp-new" className="text-xs">New Password (min 6 chars)</Label>
+   691→        <div className="relative">
+   692→          <Input
+   693→            id="fp-new"
+   694→            type={showNewPassword ? 'text' : 'password'}
+   695→            required
+   696→            minLength={6}
+   697→            value={newPassword}
+   698→            onChange={(e) => setNewPassword(e.target.value)}
+   699→            placeholder="••••••••"
+   700→            className="pr-9 text-sm"
+   701→          />
+   702→          <button
+   703→            type="button"
+   704→            tabIndex={-1}
+   705→            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+   706→            onClick={() => setShowNewPassword(!showNewPassword)}
+   707→          >
+   708→            {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+   709→          </button>
+   710→        </div>
+   711→      </div>
+   712→      <div className="space-y-1.5">
+   713→        <Label htmlFor="fp-confirm" className="text-xs">Confirm New Password</Label>
+   714→        <Input
+   715→          id="fp-confirm"
+   716→          type="password"
+   717→          required
+   718→          minLength={6}
+   719→          value={confirmNew}
+   720→          onChange={(e) => {
+   721→            setConfirmNew(e.target.value);
+   722→            if (e.target.value === newPassword) setLocalError(null);
+   723→          }}
+   724→          placeholder="••••••••"
+   725→          className="text-sm"
+   726→        />
+   727→      </div>
+   728→
+   729→      {(localError || error) && (
+   730→        <p className="text-xs text-destructive">{localError || error}</p>
+   731→      )}
+   732→
+   733→      <Button type="submit" className="w-full" disabled={localBusy || busy}>
+   734→        {(localBusy || busy) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+   735→        Reset Password
+   736→      </Button>
+   737→    </form>
+   738→  );
+   739→}
+   740→
+   741→// ---------------------------------------------------------------------------
+   742→// Export skeleton
+   743→// ---------------------------------------------------------------------------
+   744→export function AuthGateSkeleton() {
+   745→  return <Skeleton className="w-full h-screen" />;
+   746→}
+   747→

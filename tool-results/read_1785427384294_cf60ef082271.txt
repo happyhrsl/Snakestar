@@ -1,0 +1,561 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useRef, useState, useCallback } from 'react';
+     4→import {
+     5→  X,
+     6→  UserPlus,
+     7→  Swords,
+     8→  Ban,
+     9→  Shield,
+    10→  Trophy,
+    11→  Award,
+    12→  Zap,
+    13→  Sparkles,
+    14→  Check,
+    15→  ExternalLink,
+    16→  Globe,
+    17→  Users,
+    18→  Loader2,
+    19→} from 'lucide-react';
+    20→import {
+    21→  countryFlag,
+    22→  milestoneTierForChips,
+    23→  getCosmeticById,
+    24→  MILESTONE_TIERS,
+    25→  type InspectedPlayer,
+    26→} from '@/lib/game-config';
+    27→import type { LeaderboardEntry } from '@/lib/types';
+    28→import { notify, type ToastFn } from './_panel-primitives';
+    29→
+    30→interface PlayerInspectorModalProps {
+    31→  player?: InspectedPlayer | null;
+    32→  onClose: () => void;
+    33→  onToast?: ToastFn;
+    34→}
+    35→
+    36→type Tab = 'overview' | 'stats' | 'logs' | 'loadout';
+    37→
+    38→interface MatchLog {
+    39→  arena: string;
+    40→  outcome: 'Extracted' | 'Eliminated';
+    41→  chips: number;
+    42→  time: string;
+    43→  kills: number;
+    44→}
+    45→
+    46→function buildMatchHistory(p: InspectedPlayer): MatchLog[] {
+    47→  const bigChip = p.bankedChips >= 10_000_000 ? 10_000_000 : 2_500_000;
+    48→  return [
+    49→    { arena: 'Tier-05 Crore High Roller', outcome: 'Extracted', chips: bigChip, time: '10 mins ago', kills: 14 },
+    50→    { arena: 'Tier-04 Platinum Arena', outcome: 'Extracted', chips: 1_500_000, time: '2 hours ago', kills: 8 },
+    51→    { arena: 'Tier-03 Viper Boundary', outcome: 'Extracted', chips: 500_000, time: '1 day ago', kills: 5 },
+    52→    { arena: 'Tier-05 Crore High Roller', outcome: 'Eliminated', chips: -200_000, time: '2 days ago', kills: 3 },
+    53→  ];
+    54→}
+    55→
+    56→export function PlayerInspectorModal({ player, onClose, onToast }: PlayerInspectorModalProps) {
+    57→  const [tab, setTab] = useState<Tab>('overview');
+    58→  const [friendRequested, setFriendRequested] = useState(false);
+    59→  const [blocked, setBlocked] = useState(false);
+    60→
+    61→  // Leaderboard data for allies
+    62→  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+    63→  const [alliesLoading, setAlliesLoading] = useState(false);
+    64→
+    65→  // Reset state when the inspected player changes (key-based remount pattern)
+    66→  // Using a `key` on the parent would be cleaner, but since we control open/close,
+    67→  // we use a ref-guarded effect to avoid cascading renders.
+    68→  const lastUserTagRef = useRef<string | undefined>(undefined);
+    69→  if (player?.userTag !== lastUserTagRef.current) {
+    70→    lastUserTagRef.current = player?.userTag;
+    71→    if (friendRequested) setFriendRequested(false);
+    72→    if (blocked) setBlocked(false);
+    73→    if (tab !== 'overview') setTab('overview');
+    74→  }
+    75→
+    76→  // Fetch leaderboard data for allies when player changes
+    77→  const fetchLeaderboard = useCallback(async (country: string) => {
+    78→    setAlliesLoading(true);
+    79→    try {
+    80→      const res = await fetch('/api/leaderboard?type=chips&limit=10');
+    81→      if (res.ok) {
+    82→        const data = await res.json();
+    83→        setLeaderboardData(data.entries ?? []);
+    84→      }
+    85→    } catch {
+    86→      // Silently fail — allies section will show error state
+    87→    } finally {
+    88→      setAlliesLoading(false);
+    89→    }
+    90→  }, []);
+    91→
+    92→  useEffect(() => {
+    93→    if (player) {
+    94→      fetchLeaderboard(player.country);
+    95→    }
+    96→  }, [player, fetchLeaderboard]);
+    97→
+    98→  // Close on Escape
+    99→  useEffect(() => {
+   100→    function onKey(e: KeyboardEvent) {
+   101→      if (e.key === 'Escape') onClose();
+   102→    }
+   103→    if (player) window.addEventListener('keydown', onKey);
+   104→    return () => window.removeEventListener('keydown', onKey);
+   105→  }, [player, onClose]);
+   106→
+   107→  if (!player) return null;
+   108→
+   109→  const p = player;
+   110→  const flag = p.flag || countryFlag(p.country);
+   111→  const clanTag = p.clanTag;
+   112→  const clanName = p.clanName;
+   113→
+   114→  // Fallback ranks (per audit I.3)
+   115→  const globalRank = p.globalRank ?? Math.max(1, 15 - Math.floor(p.level / 3));
+   116→  const countryRank = p.countryRank ?? Math.max(1, Math.floor(globalRank / 1.4));
+   117→  const regionalRank = p.regionalRank ?? Math.max(1, Math.floor(globalRank / 2));
+   118→  const achievedAt = p.achievedAt || '26 Jul 2026, 05:42 PM UTC';
+   119→
+   120→  const history = buildMatchHistory(p);
+   121→
+   122→  // --- Allies derived from real leaderboard data ---
+   123→  const regionalAllies = leaderboardData.filter(
+   124→    (e) => e.country === p.country && e.userTag !== p.userTag,
+   125→  );
+   126→  const globalAllies = leaderboardData.filter(
+   127→    (e) => e.country !== p.country && e.userTag !== p.userTag,
+   128→  );
+   129→
+   130→  // --- Badges derived from real chip milestones ---
+   131→  const milestone = milestoneTierForChips(p.bankedChips);
+   132→  const earnedBadges = MILESTONE_TIERS.filter(
+   133→    (t) => t.id !== 'all' && p.bankedChips >= t.minChips,
+   134→  );
+   135→
+   136→  // --- Loadout from player cosmetics ---
+   137→  const skinItem = p.currentSkin ? getCosmeticById(p.currentSkin) : undefined;
+   138→  const trailItem = p.currentTrail ? getCosmeticById(p.currentTrail) : undefined;
+   139→  const deathItem = p.currentDeath ? getCosmeticById(p.currentDeath) : undefined;
+   140→  const flagItem = p.currentFlag ? getCosmeticById(p.currentFlag) : undefined;
+   141→  const bannerItem = p.currentBanner ? getCosmeticById(p.currentBanner) : undefined;
+   142→
+   143→  const loadoutEntries = [
+   144→    { label: 'Snake DNA Skin:', value: skinItem ? `${skinItem.emoji || '🐍'} ${skinItem.name}` : 'Not visible' },
+   145→    { label: 'Tail Trail FX:', value: trailItem ? `${trailItem.emoji || '✨'} ${trailItem.name}` : 'Not visible' },
+   146→    { label: 'Kill Sound Effect:', value: deathItem ? `${deathItem.emoji || '💥'} ${deathItem.name}` : 'Not visible' },
+   147→    { label: 'Victory Emote:', value: flagItem ? `${flagItem.emoji || '🏴'} ${flagItem.name}` : bannerItem ? `${bannerItem.emoji || '🏆'} ${bannerItem.name}` : 'Not visible' },
+   148→  ];
+   149→
+   150→  // --- Career stats from real player data ---
+   151→  const highestExtraction = p.biggestExtract
+   152→    ? `${p.biggestExtract.toLocaleString('en-IN')} c`
+   153→    : '—';
+   154→  const successRate =
+   155→    p.lifetimeExtracts != null && p.lifetimeDeaths != null
+   156→      ? `${((p.lifetimeExtracts / (p.lifetimeExtracts + p.lifetimeDeaths)) * 100).toFixed(1)}%`
+   157→      : '—';
+   158→  const totalKills = p.lifetimeKills != null ? `${p.lifetimeKills.toLocaleString()} Kills` : '—';
+   159→
+   160→  function handleAddFriend() {
+   161→    if (friendRequested) return;
+   162→    setFriendRequested(true);
+   163→    notify(`Friend request sent to ${p.name} (${p.userTag})! 🤝`, 'success', onToast);
+   164→  }
+   165→
+   166→  function handleChallenge() {
+   167→    notify(`Arena challenge dispatch sent to ${p.name}! ⚔️`, 'info', onToast);
+   168→  }
+   169→
+   170→  function handleBlock() {
+   171→    if (blocked) return;
+   172→    setBlocked(true);
+   173→    notify(`Player ${p.name} has been added to your block list. 🚫`, 'error', onToast);
+   174→  }
+   175→
+   176→  return (
+   177→    <div
+   178→      className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-sm"
+   179→      role="dialog"
+   180→      aria-modal="true"
+   181→      aria-labelledby="player-inspector-title"
+   182→      onClick={onClose}
+   183→    >
+   184→      <div
+   185→        className="relative w-full max-w-2xl max-h-[92vh] rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden flex flex-col"
+   186→        onClick={(e) => e.stopPropagation()}
+   187→      >
+   188→        {/* Close */}
+   189→        <button
+   190→          type="button"
+   191→          onClick={onClose}
+   192→          className="absolute top-3 right-3 z-20 p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition"
+   193→          aria-label="Close inspector"
+   194→        >
+   195→          <X className="w-4 h-4" />
+   196→        </button>
+   197→
+   198→        {/* Banner */}
+   199→        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-300 font-mono flex items-center justify-between shrink-0 mx-4 mt-4">
+   200→          <span className="flex items-center gap-1.5 font-bold">
+   201→            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Current Year (2026) Official Standings
+   202→          </span>
+   203→          <span className="text-[10px] text-slate-400 flex items-center gap-1">
+   204→            <Zap className="w-3 h-3 text-emerald-400" /> Auto-updates every 30 mins
+   205→          </span>
+   206→        </div>
+   207→
+   208→        {/* Avatar + identity */}
+   209→        <div className="px-4 pt-3 pb-2 flex items-center gap-3 sm:gap-4 shrink-0 pr-12">
+   210→          <div className="w-16 h-16 rounded-2xl bg-slate-950 border-2 border-amber-500/40 flex items-center justify-center text-3xl shadow-inner shrink-0 relative">
+   211→            <span aria-hidden>{flag}</span>
+   212→            <div className="absolute -bottom-1 -right-1 bg-indigo-600 text-white font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border border-indigo-400">
+   213→              Lvl {p.level}
+   214→            </div>
+   215→          </div>
+   216→          <div className="min-w-0">
+   217→            <h2 id="player-inspector-title" className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-1.5">
+   218→              <span className="truncate">{p.name}</span>
+   219→              <span className="text-xl" aria-hidden>{flag}</span>
+   220→            </h2>
+   221→            {clanTag && (
+   222→              <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded inline-block mt-1">
+   223→                [{clanTag}]
+   224→              </span>
+   225→            )}
+   226→            <p className="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+   227→              <span>Ledger Tag: <strong className="font-mono text-amber-400">{p.userTag}</strong></span>
+   228→              <span>•</span>
+   229→              <span className="text-emerald-400 font-mono font-bold">{p.bankedChips.toLocaleString('en-IN')} c Bank</span>
+   230→            </p>
+   231→            <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-400 font-mono mt-1.5">
+   232→              <span className="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+   233→                <Trophy className="w-3 h-3 text-amber-400" /> Global Rank #{globalRank}
+   234→              </span>
+   235→              <span className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+   236→                {flag} Country Rank #{countryRank}
+   237→              </span>
+   238→              <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+   239→                <Sparkles className="w-3 h-3 text-indigo-400" /> Region Rank #{regionalRank}
+   240→              </span>
+   241→            </div>
+   242→            <p className="text-[10px] text-slate-500 font-mono mt-1">Achieved: {achievedAt}</p>
+   243→          </div>
+   244→        </div>
+   245→
+   246→        {/* Tabs */}
+   247→        <div className="px-4 pb-2 shrink-0">
+   248→          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold" role="tablist">
+   249→            {([
+   250→              ['overview', 'Overview'],
+   251→              ['stats', 'Career Stats'],
+   252→              ['logs', 'Extraction Logs'],
+   253→              ['loadout', 'Loadout'],
+   254→            ] as const).map(([id, label]) => (
+   255→              <button
+   256→                key={id}
+   257→                type="button"
+   258→                role="tab"
+   259→                aria-selected={tab === id}
+   260→                onClick={() => setTab(id)}
+   261→                className={`flex-1 py-1.5 rounded-lg transition-all ${tab === id ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+   262→              >
+   263→                {label}
+   264→              </button>
+   265→            ))}
+   266→          </div>
+   267→        </div>
+   268→
+   269→        {/* Tab content */}
+   270→        <div className="overflow-y-auto va-scroll px-4 pb-4 flex-1 min-h-0">
+   271→          {/* OVERVIEW */}
+   272→          {tab === 'overview' && (
+   273→            <div className="space-y-3">
+   274→              {/* Clan membership — only shown if the player has a clan */}
+   275→              {clanTag && clanName && (
+   276→                <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+   277→                  <div className="text-[10px] font-bold uppercase text-slate-400 flex items-center justify-between">
+   278→                    <span className="flex items-center gap-1">
+   279→                      <Shield className="w-3.5 h-3.5 text-indigo-400" /> Syndicate Clan Membership
+   280→                    </span>
+   281→                    <span className="text-[9px] text-emerald-400 font-mono">Active Member</span>
+   282→                  </div>
+   283→                  <div className="flex items-center justify-between p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+   284→                    <div className="flex items-center gap-2.5 min-w-0">
+   285→                      <span className="text-2xl shrink-0" aria-hidden>🐍</span>
+   286→                      <div className="min-w-0">
+   287→                        <div className="font-bold text-white text-xs truncate">
+   288→                          {clanName}
+   289→                          <span className="ml-1.5 bg-indigo-500/20 text-indigo-300 text-[9px] font-mono font-bold px-1 py-0.2 rounded border border-indigo-500/30">
+   290→                            [{clanTag}]
+   291→                          </span>
+   292→                        </div>
+   293→                        <div className="text-[10px] text-slate-400 mt-0.5">Member</div>
+   294→                      </div>
+   295→                    </div>
+   296→                  </div>
+   297→                </div>
+   298→              )}
+   299→
+   300→              {/* Regional allies */}
+   301→              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+   302→                <div className="text-[10px] font-bold uppercase text-slate-400 flex items-center justify-between">
+   303→                  <span className="flex items-center gap-1">
+   304→                    <Users className="w-3.5 h-3.5 text-violet-400" /> {flag} REGIONAL ALLIES ({p.country} NETWORK)
+   305→                  </span>
+   306→                  {alliesLoading ? (
+   307→                    <Loader2 className="w-3 h-3 text-slate-500 animate-spin" />
+   308→                  ) : (
+   309→                    <span className="text-[9px] text-slate-500 font-mono">{regionalAllies.length} Members</span>
+   310→                  )}
+   311→                </div>
+   312→                {alliesLoading ? (
+   313→                  <div className="flex items-center justify-center py-4 text-[11px] text-slate-500 gap-2">
+   314→                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading regional allies…
+   315→                  </div>
+   316→                ) : regionalAllies.length === 0 ? (
+   317→                  <div className="text-center py-4 text-[11px] text-slate-500">No regional allies found on the leaderboard.</div>
+   318→                ) : (
+   319→                  <ul className="space-y-1.5">
+   320→                    {regionalAllies.map((a) => (
+   321→                      <li key={a.userTag} className="flex items-center justify-between text-xs p-2 bg-slate-900 rounded-lg border border-slate-800">
+   322→                        <div className="flex items-center gap-2 min-w-0">
+   323→                          <span aria-hidden>{countryFlag(a.country)}</span>
+   324→                          <div className="min-w-0">
+   325→                            <div className="font-bold text-white truncate">{a.name}</div>
+   326→                            <div className="text-[10px] font-mono text-slate-500">{a.userTag}</div>
+   327→                          </div>
+   328→                        </div>
+   329→                        <span className="text-[10px] font-mono text-violet-300 bg-violet-500/10 border border-violet-500/30 px-1.5 py-0.5 rounded">Rank #{a.rank}</span>
+   330→                      </li>
+   331→                    ))}
+   332→                  </ul>
+   333→                )}
+   334→              </div>
+   335→
+   336→              {/* Global allies */}
+   337→              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+   338→                <div className="text-[10px] font-bold uppercase text-slate-400 flex items-center justify-between">
+   339→                  <span className="flex items-center gap-1">
+   340→                    <Globe className="w-3.5 h-3.5 text-cyan-400" /> 🌐 GLOBAL ALLIES &amp; INTERNATIONAL ALLIANCES
+   341→                  </span>
+   342→                  {alliesLoading ? (
+   343→                    <Loader2 className="w-3 h-3 text-slate-500 animate-spin" />
+   344→                  ) : (
+   345→                    <span className="text-[9px] text-slate-500 font-mono">{globalAllies.length} Members</span>
+   346→                  )}
+   347→                </div>
+   348→                {alliesLoading ? (
+   349→                  <div className="flex items-center justify-center py-4 text-[11px] text-slate-500 gap-2">
+   350→                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading global allies…
+   351→                  </div>
+   352→                ) : globalAllies.length === 0 ? (
+   353→                  <div className="text-center py-4 text-[11px] text-slate-500">No global allies found on the leaderboard.</div>
+   354→                ) : (
+   355→                  <ul className="space-y-1.5">
+   356→                    {globalAllies.map((a) => (
+   357→                      <li key={a.userTag} className="flex items-center justify-between text-xs p-2 bg-slate-900 rounded-lg border border-slate-800">
+   358→                        <div className="flex items-center gap-2 min-w-0">
+   359→                          <span aria-hidden>{countryFlag(a.country)}</span>
+   360→                          <div className="min-w-0">
+   361→                            <div className="font-bold text-white truncate">{a.name}</div>
+   362→                            <div className="text-[10px] font-mono text-slate-500">{a.userTag}</div>
+   363→                          </div>
+   364→                        </div>
+   365→                        <span className="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-1.5 py-0.5 rounded">Rank #{a.rank}</span>
+   366→                      </li>
+   367→                    ))}
+   368→                  </ul>
+   369→                )}
+   370→              </div>
+   371→
+   372→              {/* Social channels */}
+   373→              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+   374→                <div className="text-[10px] font-bold uppercase text-slate-400 flex items-center justify-between">
+   375→                  <span className="flex items-center gap-1">
+   376→                    <Globe className="w-3.5 h-3.5 text-emerald-400" /> Creator Social Channels
+   377→                  </span>
+   378→                  <span className="text-[9px] text-emerald-400 font-mono">Verified Handles</span>
+   379→                </div>
+   380→                <div className="grid grid-cols-3 gap-2">
+   381→                  {[
+   382→                    { label: 'Instagram', icon: '📸' },
+   383→                    { label: 'YouTube', icon: '🎥' },
+   384→                    { label: 'Twitch', icon: '📱' },
+   385→                  ].map((s) => (
+   386→                    <button
+   387→                      key={s.label}
+   388→                      type="button"
+   389→                      onClick={() => notify(`Opening ${s.label} channel for ${p.name}...`, 'info', onToast)}
+   390→                      className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[11px] font-bold text-white flex items-center justify-center gap-1.5 transition"
+   391→                    >
+   392→                      <span aria-hidden>{s.icon}</span> {s.label} <ExternalLink className="w-3 h-3" />
+   393→                    </button>
+   394→                  ))}
+   395→                </div>
+   396→              </div>
+   397→
+   398→              {/* Badges — calculated from real chip milestones */}
+   399→              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+   400→                <div className="text-[10px] font-bold uppercase text-slate-400 flex items-center justify-between">
+   401→                  <span className="flex items-center gap-1">
+   402→                    <Award className="w-3.5 h-3.5 text-amber-400" /> Earned Badges &amp; Honors
+   403→                  </span>
+   404→                  <span className="text-[9px] text-amber-400 font-mono">{milestone.badge}</span>
+   405→                </div>
+   406→                <div className="grid grid-cols-2 gap-2 text-xs">
+   407→                  {earnedBadges.length === 0 ? (
+   408→                    <div className="col-span-2 text-center py-3 text-[11px] text-slate-500">No milestone badges earned yet.</div>
+   409→                  ) : (
+   410→                    earnedBadges.map((t) => (
+   411→                      <div key={t.id} className="p-2 bg-slate-900 rounded-lg border border-slate-800 flex items-center gap-2">
+   412→                        <span className="text-lg" aria-hidden>{t.badge.split(' ')[0]}</span>
+   413→                        <div>
+   414→                          <div className="font-bold text-amber-300 text-[11px]">{t.name.split('(')[0].trim()}</div>
+   415→                          <div className="text-[9px] text-slate-400">{(t.minChips / 100_000).toFixed(0)}L+ Chips</div>
+   416→                        </div>
+   417→                      </div>
+   418→                    ))
+   419→                  )}
+   420→                </div>
+   421→              </div>
+   422→            </div>
+   423→          )}
+   424→
+   425→          {/* CAREER STATS */}
+   426→          {tab === 'stats' && (
+   427→            <div className="space-y-3 text-xs">
+   428→              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+   429→                <div className="text-[10px] font-bold uppercase text-slate-400 flex items-center justify-between border-b border-slate-900 pb-1.5">
+   430→                  <span className="flex items-center gap-1">
+   431→                    <Trophy className="w-3.5 h-3.5 text-amber-400" /> Live Leaderboard Standings
+   432→                  </span>
+   433→                  <span className="text-[9px] text-emerald-400 font-mono">Real-Time Sync</span>
+   434→                </div>
+   435→                <div className="grid grid-cols-3 gap-2 text-center font-mono">
+   436→                  <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+   437→                    <div className="text-[9px] text-slate-400">Global World Rank</div>
+   438→                    <div className="font-bold text-amber-400 text-sm mt-0.5">#{globalRank}</div>
+   439→                  </div>
+   440→                  <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+   441→                    <div className="text-[9px] text-slate-400">{flag} Country Rank</div>
+   442→                    <div className="font-bold text-emerald-400 text-sm mt-0.5">#{countryRank}</div>
+   443→                  </div>
+   444→                  <div className="p-2 bg-slate-900 rounded-lg border border-slate-800">
+   445→                    <div className="text-[9px] text-slate-400">Regional Arena Rank</div>
+   446→                    <div className="font-bold text-indigo-400 text-sm mt-0.5">#{regionalRank}</div>
+   447→                  </div>
+   448→                </div>
+   449→              </div>
+   450→              <div className="grid grid-cols-2 gap-3">
+   451→                <StatCard label="Total Banked Chips" value={`${p.bankedChips.toLocaleString('en-IN')} c`} accent="text-emerald-400" icon={<Trophy className="w-3.5 h-3.5" />} />
+   452→                <StatCard label="Highest Extraction" value={highestExtraction} accent="text-amber-400" icon={<Award className="w-3.5 h-3.5" />} />
+   453→                <StatCard label="Extraction Success Rate" value={successRate} accent="text-indigo-400" icon={<Zap className="w-3.5 h-3.5" />} />
+   454→                <StatCard label="Snake Eliminations" value={totalKills} accent="text-rose-400" icon={<Swords className="w-3.5 h-3.5" />} />
+   455→              </div>
+   456→              {/* Additional real stats when available */}
+   457→              {(p.lifetimeExtracts != null || p.bestStreak != null) && (
+   458→                <div className="grid grid-cols-2 gap-3">
+   459→                  {p.lifetimeExtracts != null && (
+   460→                    <StatCard
+   461→                      label="Total Extractions"
+   462→                      value={p.lifetimeExtracts.toLocaleString()}
+   463→                      accent="text-cyan-400"
+   464→                      icon={<Sparkles className="w-3.5 h-3.5" />}
+   465→                    />
+   466→                  )}
+   467→                  {p.bestStreak != null && (
+   468→                    <StatCard
+   469→                      label="Best Streak"
+   470→                      value={`${p.bestStreak} Wins`}
+   471→                      accent="text-yellow-400"
+   472→                      icon={<Trophy className="w-3.5 h-3.5" />}
+   473→                    />
+   474→                  )}
+   475→                </div>
+   476→              )}
+   477→            </div>
+   478→          )}
+   479→
+   480→          {/* EXTRACTION LOGS */}
+   481→          {tab === 'logs' && (
+   482→            <div className="space-y-2">
+   483→              {history.map((log, i) => (
+   484→                <div key={i} className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between text-xs gap-2">
+   485→                  <div className="min-w-0">
+   486→                    <div className="font-bold text-white flex items-center gap-1.5 flex-wrap">
+   487→                      <span className="truncate">{log.arena}</span>
+   488→                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${log.outcome === 'Extracted' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+   489→                        {log.outcome}
+   490→                      </span>
+   491→                    </div>
+   492→                    <div className="text-[10px] text-slate-400 mt-0.5">
+   493→                      🕒 {log.time} · {log.kills} kills
+   494→                    </div>
+   495→                  </div>
+   496→                  <div className={`font-mono font-bold tabular-nums shrink-0 ${log.chips > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+   497→                    {log.chips > 0 ? `+${log.chips.toLocaleString('en-IN')}c` : `${log.chips.toLocaleString('en-IN')}c`}
+   498→                  </div>
+   499→                </div>
+   500→              ))}
+   501→            </div>
+   502→          )}
+   503→
+   504→          {/* LOADOUT */}
+   505→          {tab === 'loadout' && (
+   506→            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+   507→              {loadoutEntries.map((l) => (
+   508→                <div key={l.label} className="flex justify-between py-1.5 border-b border-slate-900 last:border-0">
+   509→                  <span className="text-slate-400">{l.label}</span>
+   510→                  <span className={`font-bold ${l.value === 'Not visible' ? 'text-slate-500 italic' : 'text-white'}`}>{l.value}</span>
+   511→                </div>
+   512→              ))}
+   513→            </div>
+   514→          )}
+   515→        </div>
+   516→
+   517→        {/* Action buttons */}
+   518→        <div className="grid grid-cols-2 gap-2 p-4 pt-2 border-t border-slate-800 shrink-0">
+   519→          <button
+   520→            type="button"
+   521→            onClick={handleAddFriend}
+   522→            disabled={friendRequested}
+   523→            className={`py-2.5 px-3 border rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${friendRequested ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 cursor-default' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500/30 shadow'}`}
+   524→          >
+   525→            {friendRequested ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+   526→            {friendRequested ? 'Request Sent' : 'Add Friend'}
+   527→          </button>
+   528→          <button
+   529→            type="button"
+   530→            onClick={handleChallenge}
+   531→            className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow"
+   532→          >
+   533→            <Swords className="w-4 h-4" /> Challenge
+   534→          </button>
+   535→          <button
+   536→            type="button"
+   537→            onClick={handleBlock}
+   538→            disabled={blocked}
+   539→            className={`col-span-2 py-2 border rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${blocked ? 'bg-rose-950/60 text-slate-400 border-slate-800 cursor-default' : 'bg-rose-950/20 hover:bg-rose-950/40 text-rose-400 border-rose-500/20'}`}
+   540→          >
+   541→            <Ban className="w-3.5 h-3.5" /> {blocked ? 'Player Blocked' : 'Block Player'}
+   542→          </button>
+   543→        </div>
+   544→      </div>
+   545→    </div>
+   546→  );
+   547→}
+   548→
+   549→function StatCard({ label, value, accent, icon }: { label: string; value: string; accent: string; icon: React.ReactNode }) {
+   550→  return (
+   551→    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+   552→      <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
+   553→        {icon} {label}
+   554→      </span>
+   555→      <span className={`font-mono font-bold text-sm block ${accent}`}>{value}</span>
+   556→    </div>
+   557→  );
+   558→}
+   559→
+   560→export default PlayerInspectorModal;
+   561→

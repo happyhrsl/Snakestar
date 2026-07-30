@@ -1,0 +1,649 @@
+     1→  2501→    this.hudEls.leaderboardRows = rows;
+     2→  2502→    this.hudEls.leaderboardToggle = toggle;
+     3→  2503→
+     4→  2504→    const onClick = (e: MouseEvent) => {
+     5→  2505→      e.preventDefault();
+     6→  2506→      this.hudEls.leaderboardOpen = !this.hudEls.leaderboardOpen;
+     7→  2507→      rows.style.display = this.hudEls.leaderboardOpen ? 'flex' : 'none';
+     8→  2508→      toggle.textContent = this.hudEls.leaderboardOpen ? '▾' : '▸';
+     9→  2509→    };
+    10→  2510→    header.addEventListener('click', onClick);
+    11→  2511→    header.style.pointerEvents = 'auto';
+    12→  2512→
+    13→  2513→    return wrap;
+    14→  2514→  }
+    15→  2515→
+    16→  2516→  private buildEmoteBar(): HTMLDivElement {
+    17→  2517→    const wrap = document.createElement('div');
+    18→  2518→    wrap.style.cssText =
+    19→  2519→      'position:absolute;left:8px;bottom:8px;width:min(60vw,260px);border:1px solid rgba(30,41,59,0.9);background:rgba(2,6,23,0.9);padding:8px 10px;border-radius:12px;backdrop-filter:blur(6px);pointer-events:auto;';
+    20→  2520→    const title = document.createElement('div');
+    21→  2521→    title.style.cssText =
+    22→  2522→      'font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:6px;';
+    23→  2523→    title.textContent = 'Emotes (Keys 1-5)';
+    24→  2524→    wrap.appendChild(title);
+    25→  2525→    const btnRow = document.createElement('div');
+    26→  2526→    btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
+    27→  2527→    const labels = ['GG! 🏆', 'Target! 🎯', 'Flee! 🏃💨', 'Ripped! 💪', 'Extracting! ⚡'];
+    28→  2528→    for (let i = 0; i < labels.length; i++) {
+    29→  2529→      const b = document.createElement('button');
+    30→  2530→      b.type = 'button';
+    31→  2531→      b.textContent = labels[i];
+    32→  2532→      b.style.cssText =
+    33→  2533→        'border:1px solid #1e293b;background:#0f172a;color:#cbd5e1;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:500;cursor:pointer;';
+    34→  2534→      b.addEventListener('click', (e) => {
+    35→  2535→        e.preventDefault();
+    36→  2536→        this.setPlayerChat(QUICK_EMOTES[i]);
+    37→  2537→      });
+    38→  2538→      btnRow.appendChild(b);
+    39→  2539→    }
+    40→  2540→    wrap.appendChild(btnRow);
+    41→  2541→    return wrap;
+    42→  2542→  }
+    43→  2543→
+    44→  2544→  private buildMobileControls(): HTMLDivElement {
+    45→  2545→    const wrap = document.createElement('div');
+    46→  2546→    wrap.style.cssText =
+    47→  2547→      'position:absolute;right:24px;bottom:24px;display:flex;align-items:flex-end;gap:12px;pointer-events:auto;';
+    48→  2548→
+    49→  2549→    // BOOST button
+    50→  2550→    const boost = document.createElement('button');
+    51→  2551→    boost.type = 'button';
+    52→  2552→    boost.setAttribute('aria-label', 'Boost');
+    53→  2553→    boost.innerHTML =
+    54→  2554→      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+    55→  2555→      '<div style="font-size:24px;line-height:1;">⚡</div>' +
+    56→  2556→      '<div style="font-size:10px;font-weight:bold;">BOOST</div></div>';
+    57→  2557→    boost.style.cssText =
+    58→  2558→      'width:64px;height:64px;border-radius:50%;border:1px solid rgba(245,158,11,0.5);background:rgba(245,158,11,0.2);color:#fcd34d;cursor:pointer;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;';
+    59→  2559→    const boostDown = (e: Event) => {
+    60→  2560→      e.preventDefault();
+    61→  2561→      this.boostHold = true;
+    62→  2562→      this.keys.add(' ');
+    63→  2563→    };
+    64→  2564→    const boostUp = (e: Event) => {
+    65→  2565→      e.preventDefault();
+    66→  2566→      this.boostHold = false;
+    67→  2567→      this.keys.delete(' ');
+    68→  2568→    };
+    69→  2569→    boost.addEventListener('pointerdown', boostDown);
+    70→  2570→    boost.addEventListener('pointerup', boostUp);
+    71→  2571→    boost.addEventListener('pointercancel', boostUp);
+    72→  2572→    boost.addEventListener('contextmenu', (e) => e.preventDefault());
+    73→  2573→    wrap.appendChild(boost);
+    74→  2574→
+    75→  2575→    // EXTRACT button
+    76→  2576→    const extract = document.createElement('button');
+    77→  2577→    extract.type = 'button';
+    78→  2578→    extract.setAttribute('aria-label', 'Extract');
+    79→  2579→    extract.innerHTML =
+    80→  2580→      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+    81→  2581→      '<div style="font-size:22px;line-height:1;">🏆</div>' +
+    82→  2582→      '<div style="font-size:10px;font-weight:bold;">EXTRACT</div></div>';
+    83→  2583→    extract.style.cssText =
+    84→  2584→      'width:80px;height:80px;border-radius:50%;border:1px solid rgba(16,185,129,0.6);background:rgba(16,185,129,0.15);color:#6ee7b7;cursor:pointer;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;';
+    85→  2585→    const exDown = (e: Event) => {
+    86→  2586→      e.preventDefault();
+    87→  2587→      if (this.state !== 'playing') return;
+    88→  2588→      this.extractHold = true;
+    89→  2589→      this.beginExtract();
+    90→  2590→    };
+    91→  2591→    const exUp = (e: Event) => {
+    92→  2592→      e.preventDefault();
+    93→  2593→      if (!this.extractHold) return;
+    94→  2594→      this.extractHold = false;
+    95→  2595→      this.cancelExtract();
+    96→  2596→    };
+    97→  2597→    extract.addEventListener('pointerdown', exDown);
+    98→  2598→    extract.addEventListener('pointerup', exUp);
+    99→  2599→    extract.addEventListener('pointercancel', exUp);
+   100→  2600→    extract.addEventListener('contextmenu', (e) => e.preventDefault());
+   101→  2601→    wrap.appendChild(extract);
+   102→  2602→
+   103→  2603→    return wrap;
+   104→  2604→  }
+   105→  2605→
+   106→  2606→  private buildLeaveButton(): HTMLButtonElement {
+   107→  2607→    const btn = document.createElement('button');
+   108→  2608→    btn.type = 'button';
+   109→  2609→    btn.textContent = '⨯ Leave';
+   110→  2610→    btn.style.cssText =
+   111→  2611→      'position:absolute;left:12px;bottom:96px;height:36px;padding:0 12px;border-radius:18px;border:1px solid rgba(51,65,85,0.8);background:rgba(2,6,23,0.8);color:#94a3b8;font-size:12px;cursor:pointer;backdrop-filter:blur(4px);pointer-events:auto;';
+   112→  2612→    btn.addEventListener('click', (e) => {
+   113→  2613→      e.preventDefault();
+   114→  2614→      this.handleExitToLobby();
+   115→  2615→    });
+   116→  2616→    return btn;
+   117→  2617→  }
+   118→  2618→
+   119→  2619→  private teardownHUD(): void {
+   120→  2620→    if (this.endOverlay && this.endOverlay.parentNode) {
+   121→  2621→      this.endOverlay.parentNode.removeChild(this.endOverlay);
+   122→  2622→    }
+   123→  2623→    this.endOverlay = null;
+   124→  2624→    if (this.overlayRoot && this.overlayRoot.parentNode) {
+   125→  2625→      this.overlayRoot.parentNode.removeChild(this.overlayRoot);
+   126→  2626→    }
+   127→  2627→    this.overlayRoot = null;
+   128→  2628→    this.hudEls = { leaderboardOpen: true };
+   129→  2629→  }
+   130→  2630→
+   131→  2631→  // --------------------------------------------------------------------------
+   132→  2632→  // HUD update (per-frame)
+   133→  2633→  // --------------------------------------------------------------------------
+   134→  2634→
+   135→  2635→  private updateHUD(): void {
+   136→  2636→    const p = this.player;
+   137→  2637→    if (!p) return;
+   138→  2638→    const totalScore = INITIAL_SPAWN_SCORE + p.score;
+   139→  2639→    if (this.hudEls.score) this.hudEls.score.textContent = totalScore.toLocaleString();
+   140→  2640→    if (this.hudEls.kills) this.hudEls.kills.textContent = String(p.kills);
+   141→  2641→    if (this.hudEls.bots) this.hudEls.bots.textContent = String(VIRTUAL_BOT_COUNT);
+   142→  2642→    if (this.hudEls.fps) this.hudEls.fps.textContent = `${this.fps} fps`;
+   143→  2643→
+   144→  2644→    // Rank by total score (player + bots).
+   145→  2645→    const all: { id: string; name: string; totalScore: number; isPlayer: boolean }[] = [
+   146→  2646→      { id: p.id, name: p.name, totalScore, isPlayer: true },
+   147→  2647→    ];
+   148→  2648→    for (const b of this.bots.values()) {
+   149→  2649→      all.push({ id: b.id, name: b.name, totalScore: INITIAL_SPAWN_SCORE + b.score, isPlayer: false });
+   150→  2650→    }
+   151→  2651→    all.sort((a, b) => b.totalScore - a.totalScore);
+   152→  2652→    const rank = all.findIndex((s) => s.isPlayer);
+   153→  2653→    if (this.hudEls.rank) this.hudEls.rank.textContent = `#${rank >= 0 ? rank + 1 : 1}`;
+   154→  2654→
+   155→  2655→    // Leaderboard (top 10 by score).
+   156→  2656→    if (this.hudEls.leaderboardRows) {
+   157→  2657→      const top = all.slice(0, 10);
+   158→  2658→      const rows = this.hudEls.leaderboardRows;
+   159→  2659→      const sig = top.map((s) => `${s.id}:${s.totalScore}`).join('|');
+   160→  2660→      if (sig !== this.lastLeaderboardSig) {
+   161→  2661→        this.lastLeaderboardSig = sig;
+   162→  2662→        rows.innerHTML = '';
+   163→  2663→        for (let i = 0; i < top.length; i++) {
+   164→  2664→          const s = top[i];
+   165→  2665→          const row = document.createElement('div');
+   166→  2666→          row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:3px 6px;border-radius:4px;font-size:11px;${
+   167→  2667→            s.isPlayer ? 'background:rgba(34,197,94,0.15);color:#86efac;' : 'color:#cbd5e1;'
+   168→  2668→          }`;
+   169→  2669→          const left = document.createElement('span');
+   170→  2670→          left.style.cssText = 'display:flex;gap:6px;align-items:center;min-width:0;';
+   171→  2671→          const r = document.createElement('span');
+   172→  2672→          r.style.cssText = 'color:#64748b;font-weight:bold;min-width:20px;';
+   173→  2673→          r.textContent = `${i + 1}.`;
+   174→  2674→          const nm = document.createElement('span');
+   175→  2675→          nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+   176→  2676→          nm.textContent = s.name;
+   177→  2677→          left.appendChild(r);
+   178→  2678→          left.appendChild(nm);
+   179→  2679→          const sc = document.createElement('span');
+   180→  2680→          sc.style.cssText = 'font-weight:bold;';
+   181→  2681→          sc.textContent = String(s.totalScore);
+   182→  2682→          row.appendChild(left);
+   183→  2683→          row.appendChild(sc);
+   184→  2684→          rows.appendChild(row);
+   185→  2685→        }
+   186→  2686→      }
+   187→  2687→    }
+   188→  2688→
+   189→  2689→    // Extract progress bar.
+   190→  2690→    if (p.isExtracting && this.hudEls.extractingBar && this.hudEls.extractingPct) {
+   191→  2691→      const pct = Math.min(100, Math.round((p.extractionProgress / EXTRACT_DURATION_MS) * 100));
+   192→  2692→      this.hudEls.extractingBar.style.width = `${pct}%`;
+   193→  2693→      this.hudEls.extractingPct.textContent = `${pct}%`;
+   194→  2694→    }
+   195→  2695→  }
+   196→  2696→
+   197→  2697→  private lastLeaderboardSig: string = '';
+   198→  2698→
+   199→  2699→  // --------------------------------------------------------------------------
+   200→  2700→  // End screen (death / extract) — no XP, no chips
+   201→  2701→  // --------------------------------------------------------------------------
+   202→  2702→
+   203→  2703→  private showEndScreen(outcome: 'death' | 'extract'): void {
+   204→  2704→    const parent = this.canvas.parentElement;
+   205→  2705→    if (!parent) return;
+   206→  2706→    if (this.endOverlay) {
+   207→  2707→      if (this.endOverlay.parentNode) this.endOverlay.parentNode.removeChild(this.endOverlay);
+   208→  2708→      this.endOverlay = null;
+   209→  2709→    }
+   210→  2710→
+   211→  2711→    const overlay = document.createElement('div');
+   212→  2712→    overlay.style.cssText =
+   213→  2713→      'position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.85);backdrop-filter:blur(8px);pointer-events:auto;';
+   214→  2714→    overlay.setAttribute('role', 'dialog');
+   215→  2715→    overlay.setAttribute('aria-modal', 'true');
+   216→  2716→
+   217→  2717→    const isExtract = outcome === 'extract';
+   218→  2718→    const mins = Math.floor(this.finalDurationSeconds / 60);
+   219→  2719→    const secs = this.finalDurationSeconds % 60;
+   220→  2720→    const durationStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+   221→  2721→
+   222→  2722→    const title = isExtract ? 'Practice Run Completed!' : 'Arena Disintegration!';
+   223→  2723→    const titleColor = isExtract ? '#fbbf24' : '#ef4444';
+   224→  2724→    const accent = isExtract
+   225→  2725→      ? 'linear-gradient(to right,#eab308,#f59e0b)'
+   226→  2726→      : '#dc2626';
+   227→  2727→    const subtitle = isExtract
+   228→  2728→      ? `Practice run finished! You eliminated ${this.finalKills} training bots, reached a score of ${this.finalScore}, and survived for ${mins}m ${secs}s.`
+   229→  2729→      : `Your snake was destroyed! Final score: ${this.finalScore}. No chips were wagered or lost — offline practice only.`;
+   230→  2730→
+   231→  2731→    overlay.innerHTML = `
+   232→  2732→      <div style="width:min(94vw,520px);border:1px solid #1e293b;background:#020617;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,0.6);overflow:hidden;">
+   233→  2733→        <div style="height:6px;background:${accent};"></div>
+   234→  2734→        <div style="padding:24px;">
+   235→  2735→          <div style="margin:0 auto 12px;width:64px;height:64px;border-radius:16px;border:1px solid ${
+   236→  2736→            isExtract ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'
+   237→  2737→          };background:${isExtract ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)'};display:flex;align-items:center;justify-content:center;font-size:32px;">
+   238→  2738→            ${isExtract ? '🧭' : '💀'}
+   239→  2739→          </div>
+   240→  2740→          <h3 style="text-align:center;font-size:24px;font-weight:bold;color:${titleColor};margin:0;">${title}</h3>
+   241→  2741→          <p style="text-align:center;font-size:12px;color:#94a3b8;margin:6px 0 0;">${subtitle}</p>
+   242→  2742→
+   243→  2743→          <div style="margin-top:16px;border:1px solid #1e293b;background:rgba(15,23,42,0.6);border-radius:8px;padding:12px;font-size:12px;">
+   244→  2744→            <div style="display:flex;justify-content:space-between;">
+   245→  2745→              <span style="color:#94a3b8;">Final Score:</span>
+   246→  2746→              <span style="color:#fff;">${this.finalScore.toLocaleString()}</span>
+   247→  2747→            </div>
+   248→  2748→            <div style="display:flex;justify-content:space-between;margin-top:4px;">
+   249→  2749→              <span style="color:#94a3b8;">Opponents Eliminated:</span>
+   250→  2750→              <span style="color:#fff;">${this.finalKills} Kills</span>
+   251→  2751→            </div>
+   252→  2752→            <div style="display:flex;justify-content:space-between;margin-top:4px;">
+   253→  2753→              <span style="color:#94a3b8;">Survival Time:</span>
+   254→  2754→              <span style="color:#fff;">${durationStr}</span>
+   255→  2755→            </div>
+   256→  2756→          </div>
+   257→  2757→
+   258→  2758→          ${
+   259→  2759→            isExtract
+   260→  2760→              ? `<div style="margin-top:12px;border:1px solid #1e293b;background:rgba(15,23,42,0.6);border-radius:8px;padding:12px;text-align:center;">
+   261→  2761→                   <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#fbbf24;">Offline Training Complete</div>
+   262→  2762→                   <div style="margin-top:4px;font-size:11px;color:#94a3b8;">No chips, no XP — just pure practice. Great job sharpening your skills!</div>
+   263→  2763→                 </div>`
+   264→  2764→              : `<div style="margin-top:12px;border:1px solid rgba(15,23,42,0.6);background:rgba(15,23,42,0.4);border-radius:8px;padding:10px;text-align:center;font-size:11px;color:#94a3b8;">
+   265→  2765→                   No chips were wagered or lost — offline practice only.
+   266→  2766→                 </div>`
+   267→  2767→          }
+   268→  2768→
+   269→  2769→          <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;">
+   270→  2770→            ${!isExtract && this.replayFrames.length > 20 ? `
+   271→  2771→            <button id="oe-watch-replay" type="button" style="width:100%;padding:12px;border-radius:12px;border:none;color:#fff;font-weight:bold;font-size:14px;cursor:pointer;background:linear-gradient(to right,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;gap:8px;">
+   272→  2772→              📺 WATCH DEATH REPLAY (${this.replayFrames.length} frames)
+   273→  2773→            </button>
+   274→  2774→            ` : ''}
+   275→  2775→            <button id="oe-play-again" type="button" style="width:100%;padding:12px;border-radius:12px;border:none;color:#fff;font-weight:bold;font-size:14px;cursor:pointer;background:${
+   276→  2776→              isExtract ? 'linear-gradient(to right,#10b981,#14b8a6)' : 'linear-gradient(to right,#dc2626,#e11d48)'
+   277→  2777→            };display:flex;align-items:center;justify-content:center;gap:8px;">
+   278→  2778→              ${isExtract ? '🧭' : '💀'} PLAY AGAIN
+   279→  2779→            </button>
+   280→  2780→            <button id="oe-exit" type="button" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(245,158,11,0.4);background:rgba(245,158,11,0.1);color:#fcd34d;font-weight:bold;font-size:12px;cursor:pointer;">
+   281→  2781→              RETURN TO LOBBY
+   282→  2782→            </button>
+   283→  2783→          </div>
+   284→  2784→          <p style="margin-top:12px;text-align:center;font-size:10px;color:#64748b;">Press ESC to exit</p>
+   285→  2785→        </div>
+   286→  2786→      </div>
+   287→  2787→    `;
+   288→  2788→    parent.appendChild(overlay);
+   289→  2789→    this.endOverlay = overlay;
+   290→  2790→
+   291→  2791→    const playAgainBtn = overlay.querySelector('#oe-play-again') as HTMLButtonElement | null;
+   292→  2792→    const exitBtn = overlay.querySelector('#oe-exit') as HTMLButtonElement | null;
+   293→  2793→    const watchReplayBtn = overlay.querySelector('#oe-watch-replay') as HTMLButtonElement | null;
+   294→  2794→    if (watchReplayBtn) {
+   295→  2795→      watchReplayBtn.addEventListener('click', (e) => {
+   296→  2796→        e.preventDefault();
+   297→  2797→        this.enterReplayMode();
+   298→  2798→      });
+   299→  2799→    }
+   300→  2800→    if (playAgainBtn) {
+   301→  2801→      playAgainBtn.addEventListener('click', (e) => {
+   302→  2802→        e.preventDefault();
+   303→  2803→        this.handlePlayAgain();
+   304→  2804→      });
+   305→  2805→    }
+   306→  2806→    if (exitBtn) {
+   307→  2807→      exitBtn.addEventListener('click', (e) => {
+   308→  2808→        e.preventDefault();
+   309→  2809→        this.handleExitToLobby();
+   310→  2810→      });
+   311→  2811→    }
+   312→  2812→  }
+   313→  2813→
+   314→  2814→  // --------------------------------------------------------------------------
+   315→  2815→  // End-screen actions
+   316→  2816→  // --------------------------------------------------------------------------
+   317→  2817→
+   318→  2818→  private enterReplayMode(): void {
+   319→  2819→    if (this.replayFrames.length === 0) return;
+   320→  2820→    this.isReplayMode = true;
+   321→  2821→    this.replayPlaybackIdx = 0;
+   322→  2822→    this.replayPlaying = true;
+   323→  2823→    this.replaySpeed = 1;
+   324→  2824→    this.replayZoom = 0.8;
+   325→  2825→
+   326→  2826→    // Hide end screen, show replay canvas
+   327→  2827→    if (this.endOverlay) {
+   328→  2828→      this.endOverlay.style.display = 'none';
+   329→  2829→    }
+   330→  2830→
+   331→  2831→    // Create replay canvas + controls overlay
+   332→  2832→    const parent = this.canvas.parentElement;
+   333→  2833→    if (!parent) return;
+   334→  2834→
+   335→  2835→    const replayWrap = document.createElement('div');
+   336→  2836→    replayWrap.id = 'oe-replay-wrap';
+   337→  2837→    replayWrap.style.cssText = 'position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(2,6,23,0.95);';
+   338→  2838→
+   339→  2839→    // Replay canvas
+   340→  2840→    const replayCanvas = document.createElement('canvas');
+   341→  2841→    replayCanvas.id = 'oe-replay-canvas';
+   342→  2842→    replayCanvas.style.cssText = 'width:min(90vw,800px);aspect-ratio:16/9;border:1px solid #1e293b;border-radius:12px;background:#020617;display:block;';
+   343→  2843→    replayWrap.appendChild(replayCanvas);
+   344→  2844→
+   345→  2845→    // Controls
+   346→  2846→    const controls = document.createElement('div');
+   347→  2847→    controls.id = 'oe-replay-controls';
+   348→  2848→    controls.style.cssText = 'margin-top:12px;display:flex;align-items:center;gap:8px;';
+   349→  2849→    controls.innerHTML = `
+   350→  2850→      <button id="oe-replay-restart" type="button" style="width:32px;height:32px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;cursor:pointer;font-size:14px;">↺</button>
+   351→  2851→      <button id="oe-replay-toggle" type="button" style="width:36px;height:36px;border-radius:8px;border:none;background:#e11d48;color:#fff;cursor:pointer;font-size:16px;">⏸</button>
+   352→  2852→      <button id="oe-replay-speed" type="button" style="height:32px;padding:0 8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;cursor:pointer;font-size:11px;font-weight:bold;font-family:monospace;">1x</button>
+   353→  2853→      <div style="display:flex;align-items:center;gap:4px;">
+   354→  2854→        <button id="oe-replay-zout" type="button" style="width:32px;height:32px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;cursor:pointer;font-size:12px;">−</button>
+   355→  2855→        <span id="oe-replay-zoom-label" style="width:32px;text-align:center;font-size:10px;color:#94a3b8;font-family:monospace;">80%</span>
+   356→  2856→        <button id="oe-replay-zin" type="button" style="width:32px;height:32px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;cursor:pointer;font-size:12px;">+</button>
+   357→  2857→      </div>
+   358→  2858→      <button id="oe-replay-exit" type="button" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;font-size:11px;font-weight:bold;">EXIT REPLAY</button>
+   359→  2859→    `;
+   360→  2860→    replayWrap.appendChild(controls);
+   361→  2861→
+   362→  2862→    // Progress bar
+   363→  2863→    const progressWrap = document.createElement('div');
+   364→  2864→    progressWrap.id = 'oe-replay-progress-wrap';
+   365→  2865→    progressWrap.style.cssText = 'width:min(90vw,800px);height:6px;background:#1e293b;border-radius:3px;margin-top:8px;position:relative;';
+   366→  2866→    const progressBar = document.createElement('div');
+   367→  2867→    progressBar.id = 'oe-replay-progress-bar';
+   368→  2868→    progressBar.style.cssText = 'height:100%;background:#e11d48;border-radius:3px;width:0%;transition:width 50ms;';
+   369→  2869→    progressWrap.appendChild(progressBar);
+   370→  2870→    // Death marker
+   371→  2871→    if (this.replayDeathFrameIdx > 0 && this.replayFrames.length > 0) {
+   372→  2872→      const deathPct = (this.replayDeathFrameIdx / (this.replayFrames.length - 1)) * 100;
+   373→  2873→      const marker = document.createElement('div');
+   374→  2874→      marker.style.cssText = `position:absolute;top:0;height:100%;width:2px;background:#fbbf24;left:${deathPct}%;`;
+   375→  2875→      progressWrap.appendChild(marker);
+   376→  2876→    }
+   377→  2877→    replayWrap.appendChild(progressWrap);
+   378→  2878→
+   379→  2879→    // Frame counter
+   380→  2880→    const counter = document.createElement('div');
+   381→  2881→    counter.id = 'oe-replay-counter';
+   382→  2882→    counter.style.cssText = 'margin-top:4px;font-size:11px;color:#94a3b8;font-family:monospace;';
+   383→  2883→    counter.textContent = `Frame 1/${this.replayFrames.length}`;
+   384→  2884→    replayWrap.appendChild(counter);
+   385→  2885→
+   386→  2886→    parent.appendChild(replayWrap);
+   387→  2887→
+   388→  2888→    // Setup canvas
+   389→  2889→    this.replayCanvas = replayCanvas;
+   390→  2890→    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   391→  2891→    replayCanvas.width = replayCanvas.clientWidth * dpr;
+   392→  2892→    replayCanvas.height = replayCanvas.clientHeight * dpr;
+   393→  2893→    this.replayCtx = replayCanvas.getContext('2d', { alpha: false });
+   394→  2894→
+   395→  2895→    // Event listeners
+   396→  2896→    const toggleBtn = controls.querySelector('#oe-replay-toggle') as HTMLButtonElement;
+   397→  2897→    const restartBtn = controls.querySelector('#oe-replay-restart') as HTMLButtonElement;
+   398→  2898→    const speedBtn = controls.querySelector('#oe-replay-speed') as HTMLButtonElement;
+   399→  2899→    const zinBtn = controls.querySelector('#oe-replay-zin') as HTMLButtonElement;
+   400→  2900→    const zoutBtn = controls.querySelector('#oe-replay-zout') as HTMLButtonElement;
+   401→  2901→    const exitBtn = controls.querySelector('#oe-replay-exit') as HTMLButtonElement;
+   402→  2902→    const zoomLabel = controls.querySelector('#oe-replay-zoom-label') as HTMLSpanElement;
+   403→  2903→
+   404→  2904→    toggleBtn.onclick = () => {
+   405→  2905→      this.replayPlaying = !this.replayPlaying;
+   406→  2906→      toggleBtn.textContent = this.replayPlaying ? '⏸' : '▶';
+   407→  2907→    };
+   408→  2908→    restartBtn.onclick = () => {
+   409→  2909→      this.replayPlaybackIdx = 0;
+   410→  2910→      this.replayPlaying = true;
+   411→  2911→      toggleBtn.textContent = '⏸';
+   412→  2912→    };
+   413→  2913→    const speeds = [0.25, 0.5, 1, 2];
+   414→  2914→    speedBtn.onclick = () => {
+   415→  2915→      const ci = speeds.indexOf(this.replaySpeed);
+   416→  2916→      this.replaySpeed = speeds[(ci + 1) % speeds.length];
+   417→  2917→      speedBtn.textContent = `${this.replaySpeed}x`;
+   418→  2918→    };
+   419→  2919→    zinBtn.onclick = () => {
+   420→  2920→      this.replayZoom = Math.min(2, this.replayZoom + 0.15);
+   421→  2921→      zoomLabel.textContent = `${Math.round(this.replayZoom * 100)}%`;
+   422→  2922→    };
+   423→  2923→    zoutBtn.onclick = () => {
+   424→  2924→      this.replayZoom = Math.max(0.3, this.replayZoom - 0.15);
+   425→  2925→      zoomLabel.textContent = `${Math.round(this.replayZoom * 100)}%`;
+   426→  2926→    };
+   427→  2927→    exitBtn.onclick = () => {
+   428→  2928→      this.exitReplayMode();
+   429→  2929→    };
+   430→  2930→
+   431→  2931→    // Start replay animation
+   432→  2932→    this.replayLastTime = performance.now();
+   433→  2933→    this.replayRafId = requestAnimationFrame(this.replayFrame.bind(this));
+   434→  2934→  }
+   435→  2935→
+   436→  2936→  private replayFrame = (now: number): void => {
+   437→  2937→    if (!this.isReplayMode || this.stopped) return;
+   438→  2938→    this.replayRafId = requestAnimationFrame(this.replayFrame.bind(this));
+   439→  2939→
+   440→  2940→    const ctx = this.replayCtx;
+   441→  2941→    const canvas = this.replayCanvas;
+   442→  2942→    if (!ctx || !canvas) return;
+   443→  2943→
+   444→  2944→    // Advance frame
+   445→  2945→    if (this.replayPlaying) {
+   446→  2946→      const frameInterval = (1000 / 30) / this.replaySpeed;
+   447→  2947→      const dt = now - this.replayLastTime;
+   448→  2948→      if (dt >= frameInterval) {
+   449→  2949→        this.replayPlaybackIdx = (this.replayPlaybackIdx + 1) % this.replayFrames.length;
+   450→  2950→        this.replayLastTime = now;
+   451→  2951→      }
+   452→  2952→    } else {
+   453→  2953→      this.replayLastTime = now;
+   454→  2954→    }
+   455→  2955→
+   456→  2956→    const frame = this.replayFrames[this.replayPlaybackIdx];
+   457→  2957→    if (!frame) return;
+   458→  2958→
+   459→  2959→    const w = canvas.clientWidth;
+   460→  2960→    const h = canvas.clientHeight;
+   461→  2961→    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   462→  2962→
+   463→  2963→    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+   464→  2964→      canvas.width = w * dpr;
+   465→  2965→      canvas.height = h * dpr;
+   466→  2966→    }
+   467→  2967→
+   468→  2968→    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   469→  2969→    ctx.fillStyle = '#020617';
+   470→  2970→    ctx.fillRect(0, 0, w, h);
+   471→  2971→
+   472→  2972→    const z = this.replayZoom;
+   473→  2973→    const camX = frame.camX;
+   474→  2974→    const camY = frame.camY;
+   475→  2975→
+   476→  2976→    // World transform
+   477→  2977→    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   478→  2978→    ctx.translate(w / 2, h / 2);
+   479→  2979→    ctx.scale(z, z);
+   480→  2980→    ctx.translate(-camX, -camY);
+   481→  2981→
+   482→  2982→    // Grid
+   483→  2983→    const gridSize = 60;
+   484→  2984→    const viewL = camX - w / 2 / z - gridSize;
+   485→  2985→    const viewR = camX + w / 2 / z + gridSize;
+   486→  2986→    const viewT = camY - h / 2 / z - gridSize;
+   487→  2987→    const viewB = camY + h / 2 / z + gridSize;
+   488→  2988→    ctx.strokeStyle = '#1e293b';
+   489→  2989→    ctx.lineWidth = 1 / z;
+   490→  2990→    ctx.beginPath();
+   491→  2991→    const sX = Math.floor(viewL / gridSize) * gridSize;
+   492→  2992→    const eX = Math.ceil(viewR / gridSize) * gridSize;
+   493→  2993→    const sY = Math.floor(viewT / gridSize) * gridSize;
+   494→  2994→    const eY = Math.ceil(viewB / gridSize) * gridSize;
+   495→  2995→    for (let x = sX; x <= eX; x += gridSize) { ctx.moveTo(x, viewT); ctx.lineTo(x, viewB); }
+   496→  2996→    for (let y = sY; y <= eY; y += gridSize) { ctx.moveTo(viewL, y); ctx.lineTo(viewR, y); }
+   497→  2997→    ctx.stroke();
+   498→  2998→
+   499→  2999→    // Draw food
+   500→  3000→    for (const f of frame.foods) {
+   501→  3001→      if (f.x < viewL || f.x > viewR || f.y < viewT || f.y > viewB) continue;
+   502→  3002→      ctx.fillStyle = f.color;
+   503→  3003→      ctx.beginPath();
+   504→  3004→      ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+   505→  3005→      ctx.fill();
+   506→  3006→    }
+   507→  3007→
+   508→  3008→    // Draw snakes
+   509→  3009→    for (const s of frame.snakes) {
+   510→  3010→      if (s.points.length === 0) continue;
+   511→  3011→      const head = s.points[0];
+   512→  3012→      if (head.x < viewL - 100 || head.x > viewR + 100 || head.y < viewT - 100 || head.y > viewB + 100) continue;
+   513→  3013→
+   514→  3014→      if (s.points.length >= 2) {
+   515→  3015→        ctx.strokeStyle = s.color;
+   516→  3016→        ctx.lineWidth = s.size * 2;
+   517→  3017→        ctx.lineCap = 'round';
+   518→  3018→        ctx.lineJoin = 'round';
+   519→  3019→        ctx.beginPath();
+   520→  3020→        ctx.moveTo(s.points[0].x, s.points[0].y);
+   521→  3021→        for (let i = 1; i < s.points.length; i++) {
+   522→  3022→          ctx.lineTo(s.points[i].x, s.points[i].y);
+   523→  3023→        }
+   524→  3024→        ctx.stroke();
+   525→  3025→
+   526→  3026→        // Head
+   527→  3027→        ctx.fillStyle = s.secondaryColor ?? s.color;
+   528→  3028→        ctx.beginPath();
+   529→  3029→        ctx.arc(s.points[0].x, s.points[0].y, s.size * 1.2, 0, Math.PI * 2);
+   530→  3030→        ctx.fill();
+   531→  3031→
+   532→  3032→        // Player highlight
+   533→  3033→        if (s.isPlayer && !s.isDead) {
+   534→  3034→          ctx.strokeStyle = 'rgba(250, 204, 21, 0.5)';
+   535→  3035→          ctx.lineWidth = s.size * 2.5;
+   536→  3036→          ctx.beginPath();
+   537→  3037→          ctx.moveTo(s.points[0].x, s.points[0].y);
+   538→  3038→          for (let i = 1; i < s.points.length; i++) {
+   539→  3039→            ctx.lineTo(s.points[i].x, s.points[i].y);
+   540→  3040→          }
+   541→  3041→          ctx.stroke();
+   542→  3042→        }
+   543→  3043→
+   544→  3044→        // Name tag
+   545→  3045→        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   546→  3046→        ctx.font = 'bold 10px sans-serif';
+   547→  3047→        ctx.fillStyle = s.isPlayer ? '#fcd34d' : '#e2e8f0';
+   548→  3048→        ctx.textAlign = 'center';
+   549→  3049→        ctx.textBaseline = 'bottom';
+   550→  3050→        const screenX = w / 2 + (head.x - camX) * z;
+   551→  3051→        const screenY = h / 2 + (head.y - camY) * z - s.size * z * 1.5;
+   552→  3052→        ctx.fillText(s.name, screenX, screenY);
+   553→  3053→        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   554→  3054→        ctx.translate(w / 2, h / 2);
+   555→  3055→        ctx.scale(z, z);
+   556→  3056→        ctx.translate(-camX, -camY);
+   557→  3057→      }
+   558→  3058→    }
+   559→  3059→
+   560→  3060→    // Reset transform for overlays
+   561→  3061→    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   562→  3062→
+   563→  3063→    // Death indicator
+   564→  3064→    const isPostDeathFrame = this.replayDeathFrameIdx > 0 && this.replayPlaybackIdx >= this.replayDeathFrameIdx;
+   565→  3065→    ctx.font = 'bold 12px monospace';
+   566→  3066→    ctx.fillStyle = 'rgba(244, 63, 94, 0.8)';
+   567→  3067→    ctx.textAlign = 'left';
+   568→  3068→    ctx.textBaseline = 'top';
+   569→  3069→    ctx.fillText('⏺ REPLAY', 8, 8);
+   570→  3070→
+   571→  3071→    if (this.replayDeathFrameIdx > 0) {
+   572→  3072→      const preSec = Math.min(15, Math.floor(this.replayPlaybackIdx / 30));
+   573→  3073→      const postSec = this.replayPlaybackIdx > this.replayDeathFrameIdx
+   574→  3074→        ? Math.min(15, Math.floor((this.replayPlaybackIdx - this.replayDeathFrameIdx) / 30))
+   575→  3075→        : 0;
+   576→  3076→      ctx.font = '10px monospace';
+   577→  3077→      ctx.fillStyle = isPostDeathFrame ? 'rgba(244, 63, 94, 0.9)' : 'rgba(226, 232, 240, 0.6)';
+   578→  3078→      const label = isPostDeathFrame
+   579→  3079→        ? `⛔ DEATH +${postSec}s | Frame ${this.replayPlaybackIdx + 1}/${this.replayFrames.length}`
+   580→  3080→        : `Frame ${this.replayPlaybackIdx + 1}/${this.replayFrames.length} | -${Math.max(0, 15 - preSec)}s to death`;
+   581→  3081→      ctx.fillText(label, 8, 24);
+   582→  3082→    }
+   583→  3083→
+   584→  3084→    // Update progress bar
+   585→  3085→    const progressEl = document.getElementById('oe-replay-progress-bar');
+   586→  3086→    if (progressEl) {
+   587→  3087→      const pct = this.replayFrames.length > 1 ? (this.replayPlaybackIdx / (this.replayFrames.length - 1)) * 100 : 0;
+   588→  3088→      progressEl.style.width = `${pct}%`;
+   589→  3089→    }
+   590→  3090→    const counterEl = document.getElementById('oe-replay-counter');
+   591→  3091→    if (counterEl) {
+   592→  3092→      counterEl.textContent = `Frame ${this.replayPlaybackIdx + 1}/${this.replayFrames.length}`;
+   593→  3093→    }
+   594→  3094→  };
+   595→  3095→
+   596→  3096→  private exitReplayMode(): void {
+   597→  3097→    this.isReplayMode = false;
+   598→  3098→    if (this.replayRafId !== null) {
+   599→  3099→      cancelAnimationFrame(this.replayRafId);
+   600→  3100→      this.replayRafId = null;
+   601→  3101→    }
+   602→  3102→    this.replayCanvas = null;
+   603→  3103→    this.replayCtx = null;
+   604→  3104→
+   605→  3105→    // Remove replay overlay
+   606→  3106→    const wrap = document.getElementById('oe-replay-wrap');
+   607→  3107→    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+   608→  3108→
+   609→  3109→    // Show end screen again
+   610→  3110→    if (this.endOverlay) {
+   611→  3111→      this.endOverlay.style.display = '';
+   612→  3112→    }
+   613→  3113→  }
+   614→  3114→
+   615→  3115→  private handlePlayAgain(): void {
+   616→  3116→    if (this.endOverlay && this.endOverlay.parentNode) {
+   617→  3117→      this.endOverlay.parentNode.removeChild(this.endOverlay);
+   618→  3118→    }
+   619→  3119→    this.endOverlay = null;
+   620→  3120→    // Clear replay state
+   621→  3121→    this.replayPreBuffer = [];
+   622→  3122→    this.replayPreWriteIdx = 0;
+   623→  3123→    this.replayPostBuffer = [];
+   624→  3124→    this.isPostDeathRecording = false;
+   625→  3125→    this.postDeathTicksRemaining = 0;
+   626→  3126→    this.replayFrames = [];
+   627→  3127→    this.replayDeathFrameIdx = 0;
+   628→  3128→    this.exitReplayMode();
+   629→  3129→    this.resetWorld();
+   630→  3130→    this.startTime = performance.now();
+   631→  3131→    this.accumulator = 0;
+   632→  3132→    if (this.hudEls.extractingWrap) this.hudEls.extractingWrap.style.display = 'none';
+   633→  3133→    if (this.hudEls.idleHint) this.hudEls.idleHint.style.display = 'block';
+   634→  3134→  }
+   635→  3135→
+   636→  3136→  private handleExitToLobby(): void {
+   637→  3137→    const result: OfflineExitResult = {
+   638→  3138→      score: this.finalScore,
+   639→  3139→      kills: this.finalKills,
+   640→  3140→      durationSeconds: this.finalDurationSeconds,
+   641→  3141→    };
+   642→  3142→    try {
+   643→  3143→      this.onExit(result);
+   644→  3144→    } catch {
+   645→  3145→      /* ignore */
+   646→  3146→    }
+   647→  3147→  }
+   648→  3148→}
+   649→  3149→

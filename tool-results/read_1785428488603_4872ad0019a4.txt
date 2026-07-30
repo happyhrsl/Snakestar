@@ -1,0 +1,520 @@
+     1→import { NextRequest, NextResponse } from 'next/server';
+     2→import { db } from '@/lib/db';
+     3→import { getSession } from '@/lib/auth';
+     4→import { utcLastMonday, utcToday, utcYesterday, utcMonday } from '@/lib/date-utils';
+     5→
+     6→
+     7→
+     8→/** Pick N random items from an array (no duplicates) */
+     9→function pickRandom<T>(arr: T[], n: number): T[] {
+    10→  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+    11→  return shuffled.slice(0, n);
+    12→}
+    13→
+    14→/** Pick N random items ensuring no duplicate categories */
+    15→function pickDiverse<T extends { category: string }>(arr: T[], n: number): T[] {
+    16→  // Group by category
+    17→  const byCategory = new Map<string, T[]>();
+    18→  for (const item of arr) {
+    19→    const list = byCategory.get(item.category) || [];
+    20→    list.push(item);
+    21→    byCategory.set(item.category, list);
+    22→  }
+    23→
+    24→  // Shuffle categories
+    25→  const categories = [...byCategory.keys()].sort(() => Math.random() - 0.5);
+    26→  const picked: T[] = [];
+    27→  const usedCategories = new Set<string>();
+    28→
+    29→  // First pass: pick one from each unique category
+    30→  for (const cat of categories) {
+    31→    if (picked.length >= n) break;
+    32→    const items = byCategory.get(cat)!;
+    33→    const item = items[Math.floor(Math.random() * items.length)];
+    34→    picked.push(item);
+    35→    usedCategories.add(cat);
+    36→  }
+    37→
+    38→  // Second pass: fill remaining slots (still avoiding duplicates in the pick)
+    39→  if (picked.length < n) {
+    40→    const remaining = arr.filter(
+    41→      (item) => !picked.includes(item),
+    42→    );
+    43→    const extra = pickRandom(remaining, n - picked.length);
+    44→    picked.push(...extra);
+    45→  }
+    46→
+    47→  return picked.slice(0, n);
+    48→}
+    49→
+    50→/** Exclude templates that share a title with the exclude list */
+    51→function excludeByTitle<T extends { title: string }>(pool: T[], excludeTitles: Set<string>): T[] {
+    52→  return pool.filter((t) => !excludeTitles.has(t.title));
+    53→}
+    54→
+    55→// ---------------------------------------------------------------------------
+    56→// Level tier helper
+    57→// ---------------------------------------------------------------------------
+    58→
+    59→type LevelTier = 'novice' | 'operative' | 'veteran' | 'elite';
+    60→
+    61→function getLevelTier(level: number): LevelTier {
+    62→  if (level <= 5) return 'novice';
+    63→  if (level <= 15) return 'operative';
+    64→  if (level <= 30) return 'veteran';
+    65→  return 'elite';
+    66→}
+    67→
+    68→/** Level-based reward multiplier */
+    69→function levelRewardMultiplier(level: number): number {
+    70→  if (level <= 5) return 1.0;
+    71→  if (level <= 15) return 1.5;
+    72→  if (level <= 30) return 2.5;
+    73→  return 4.0;
+    74→}
+    75→
+    76→// ---------------------------------------------------------------------------
+    77→// Challenge pool definitions — 4 tiers × 5 categories × multiple per category
+    78→// ---------------------------------------------------------------------------
+    79→
+    80→interface ChallengeTemplate {
+    81→  category: string;
+    82→  title: string;
+    83→  description: string;
+    84→  target: number;
+    85→  reward: number;
+    86→  tier: LevelTier;
+    87→}
+    88→
+    89→// ── DAILY POOLS ──────────────────────────────────────────────────────────
+    90→
+    91→const DAILY_NOVICE: ChallengeTemplate[] = [
+    92→  // Kill targets
+    93→  { category: 'kill', title: 'Novice Hunter', description: 'Eliminate 2 rival snakes in the arena.', target: 2, reward: 15, tier: 'novice' },
+    94→  { category: 'kill', title: 'First Blood', description: 'Eliminate 3 rival snakes in the arena.', target: 3, reward: 20, tier: 'novice' },
+    95→  { category: 'kill', title: 'Young Fang', description: 'Eliminate 5 rival snakes in the arena.', target: 5, reward: 30, tier: 'novice' },
+    96→  // Extract targets
+    97→  { category: 'extract', title: 'Safe Exit', description: 'Extract with at least 30 chips in a single match.', target: 30, reward: 20, tier: 'novice' },
+    98→  { category: 'extract', title: 'Pocket Cash', description: 'Extract with at least 50 chips in a single match.', target: 50, reward: 25, tier: 'novice' },
+    99→  { category: 'extract', title: 'Clean Getaway', description: 'Extract with at least 75 chips in a single match.', target: 75, reward: 35, tier: 'novice' },
+   100→  // Star collect targets
+   101→  { category: 'star_collect', title: 'Star Spark', description: 'Collect 3 star-chips dropped by fallen opponents.', target: 3, reward: 20, tier: 'novice' },
+   102→  { category: 'star_collect', title: 'Star Gazer', description: 'Collect 5 star-chips dropped by fallen opponents.', target: 5, reward: 30, tier: 'novice' },
+   103→  { category: 'star_collect', title: 'Star Dust', description: 'Collect 8 star-chips dropped by fallen opponents.', target: 8, reward: 35, tier: 'novice' },
+   104→  // Score (body length) targets
+   105→  { category: 'score', title: 'Tiny Rattler', description: 'Reach a body length of 30 in a single match.', target: 30, reward: 15, tier: 'novice' },
+   106→  { category: 'score', title: 'Growing Serpent', description: 'Reach a body length of 50 in a single match.', target: 50, reward: 25, tier: 'novice' },
+   107→  { category: 'score', title: 'Medium Coil', description: 'Reach a body length of 75 in a single match.', target: 75, reward: 35, tier: 'novice' },
+   108→  // Arena entry
+   109→  { category: 'arena_entry', title: 'Arena Explorer', description: 'Enter any arena 1 time.', target: 1, reward: 20, tier: 'novice' },
+   110→  { category: 'arena_entry', title: 'Warm Up', description: 'Enter any arena 2 times.', target: 2, reward: 30, tier: 'novice' },
+   111→  // Survival
+   112→  { category: 'survive', title: 'Snake Survival', description: 'Survive for 60 seconds in any arena.', target: 60, reward: 25, tier: 'novice' },
+   113→  { category: 'survive', title: 'Last Serpent', description: 'Survive for 90 seconds in any arena.', target: 90, reward: 35, tier: 'novice' },
+   114→];
+   115→
+   116→const DAILY_OPERATIVE: ChallengeTemplate[] = [
+   117→  // Kill targets
+   118→  { category: 'kill', title: 'Snake Slayer', description: 'Eliminate 5 rival snakes in the arena.', target: 5, reward: 35, tier: 'operative' },
+   119→  { category: 'kill', title: 'Venom Strike', description: 'Eliminate 8 rival snakes in the arena.', target: 8, reward: 45, tier: 'operative' },
+   120→  { category: 'kill', title: 'Double Digit', description: 'Eliminate 10 rival snakes in the arena.', target: 10, reward: 55, tier: 'operative' },
+   121→  { category: 'kill', title: 'Aggressive Hunter', description: 'Eliminate 12 rival snakes in the arena.', target: 12, reward: 65, tier: 'operative' },
+   122→  // Extract targets
+   123→  { category: 'extract', title: 'Quick Cash Out', description: 'Extract with at least 100 chips in a single match.', target: 100, reward: 40, tier: 'operative' },
+   124→  { category: 'extract', title: 'High Roller Exit', description: 'Extract with at least 200 chips in a single match.', target: 200, reward: 55, tier: 'operative' },
+   125→  { category: 'extract', title: 'Solid Extraction', description: 'Extract with at least 300 chips in a single match.', target: 300, reward: 70, tier: 'operative' },
+   126→  // Star collect targets
+   127→  { category: 'star_collect', title: 'Star Collector', description: 'Collect 10 star-chips dropped by fallen opponents.', target: 10, reward: 40, tier: 'operative' },
+   128→  { category: 'star_collect', title: 'Star Hunter', description: 'Collect 15 star-chips dropped by fallen opponents.', target: 15, reward: 50, tier: 'operative' },
+   129→  { category: 'star_collect', title: 'Star Feast', description: 'Collect 20 star-chips dropped by fallen opponents.', target: 20, reward: 60, tier: 'operative' },
+   130→  // Score (body length) targets
+   131→  { category: 'score', title: 'Long Snake', description: 'Reach a body length of 100 in a single match.', target: 100, reward: 40, tier: 'operative' },
+   132→  { category: 'score', title: 'Impressive Coil', description: 'Reach a body length of 150 in a single match.', target: 150, reward: 55, tier: 'operative' },
+   133→  // Arena entry
+   134→  { category: 'arena_entry', title: 'Arena Regular', description: 'Enter any arena 2 times.', target: 2, reward: 35, tier: 'operative' },
+   135→  { category: 'arena_entry', title: 'Arena Addict', description: 'Enter any arena 3 times.', target: 3, reward: 45, tier: 'operative' },
+   136→  // Survival
+   137→  { category: 'survive', title: 'Iron scales', description: 'Survive for 90 seconds in any arena.', target: 90, reward: 45, tier: 'operative' },
+   138→  { category: 'survive', title: 'Endurance Run', description: 'Survive for 120 seconds in any arena.', target: 120, reward: 60, tier: 'operative' },
+   139→  // Streak
+   140→  { category: 'extract_streak', title: 'Clean Escape', description: 'Extract successfully 2 times today.', target: 2, reward: 60, tier: 'operative' },
+   141→  { category: 'extract_streak', title: 'Hat Trick', description: 'Extract successfully 3 times today.', target: 3, reward: 80, tier: 'operative' },
+   142→];
+   143→
+   144→const DAILY_VETERAN: ChallengeTemplate[] = [
+   145→  // Kill targets
+   146→  { category: 'kill', title: 'Apex Predator', description: 'Eliminate 12 rival snakes in the arena.', target: 12, reward: 70, tier: 'veteran' },
+   147→  { category: 'kill', title: 'Arena Butcher', description: 'Eliminate 15 rival snakes in the arena.', target: 15, reward: 85, tier: 'veteran' },
+   148→  { category: 'kill', title: 'Venom Reaper', description: 'Eliminate 20 rival snakes in the arena.', target: 20, reward: 100, tier: 'veteran' },
+   149→  { category: 'kill', title: 'Death Incarnate', description: 'Eliminate 25 rival snakes in the arena.', target: 25, reward: 120, tier: 'veteran' },
+   150→  // Extract targets
+   151→  { category: 'extract', title: 'Mega Extraction', description: 'Extract with at least 500 chips in a single match.', target: 500, reward: 90, tier: 'veteran' },
+   152→  { category: 'extract', title: 'Grand Withdrawal', description: 'Extract with at least 750 chips in a single match.', target: 750, reward: 120, tier: 'veteran' },
+   153→  { category: 'extract', title: 'Fortune Escape', description: 'Extract with at least 1 000 chips in a single match.', target: 1000, reward: 150, tier: 'veteran' },
+   154→  // Star collect targets
+   155→  { category: 'star_collect', title: 'Star Hoarder', description: 'Collect 25 star-chips dropped by fallen opponents.', target: 25, reward: 70, tier: 'veteran' },
+   156→  { category: 'star_collect', title: 'Star Monopoly', description: 'Collect 35 star-chips dropped by fallen opponents.', target: 35, reward: 90, tier: 'veteran' },
+   157→  // Score (body length) targets
+   158→  { category: 'score', title: 'Titan Length', description: 'Reach a body length of 200 in a single match.', target: 200, reward: 75, tier: 'veteran' },
+   159→  { category: 'score', title: 'Behemoth Coil', description: 'Reach a body length of 300 in a single match.', target: 300, reward: 100, tier: 'veteran' },
+   160→  // Arena entry
+   161→  { category: 'arena_entry', title: 'Arena Grinder', description: 'Enter any arena 4 times.', target: 4, reward: 50, tier: 'veteran' },
+   162→  { category: 'arena_entry', title: 'Arena Machine', description: 'Enter any arena 5 times.', target: 5, reward: 60, tier: 'veteran' },
+   163→  // Survival
+   164→  { category: 'survive', title: 'Titan\'s Endurance', description: 'Survive for 150 seconds in any arena.', target: 150, reward: 80, tier: 'veteran' },
+   165→  { category: 'survive', title: 'Unbreakable Coil', description: 'Survive for 200 seconds in any arena.', target: 200, reward: 110, tier: 'veteran' },
+   166→  // Streak
+   167→  { category: 'extract_streak', title: 'Veteran Escape', description: 'Extract successfully 3 times today.', target: 3, reward: 100, tier: 'veteran' },
+   168→  { category: 'extract_streak', title: 'Untouchable', description: 'Extract successfully 4 times without a single death.', target: 4, reward: 140, tier: 'veteran' },
+   169→];
+   170→
+   171→const DAILY_ELITE: ChallengeTemplate[] = [
+   172→  // Kill targets
+   173→  { category: 'kill', title: 'Massacre Protocol', description: 'Eliminate 20 rival snakes in the arena.', target: 20, reward: 100, tier: 'elite' },
+   174→  { category: 'kill', title: 'Genocide Mode', description: 'Eliminate 30 rival snakes in the arena.', target: 30, reward: 150, tier: 'elite' },
+   175→  { category: 'kill', title: 'Extinction Event', description: 'Eliminate 40 rival snakes in the arena.', target: 40, reward: 200, tier: 'elite' },
+   176→  { category: 'kill', title: 'God of Venom', description: 'Eliminate 50 rival snakes in the arena.', target: 50, reward: 250, tier: 'elite' },
+   177→  // Extract targets
+   178→  { category: 'extract', title: 'Elite Withdrawal', description: 'Extract with at least 2 000 chips in a single match.', target: 2000, reward: 150, tier: 'elite' },
+   179→  { category: 'extract', title: 'Phantom Bank', description: 'Extract with at least 5 000 chips in a single match.', target: 5000, reward: 250, tier: 'elite' },
+   180→  { category: 'extract', title: 'Legendary Haul', description: 'Extract with at least 10 000 chips in a single match.', target: 10000, reward: 400, tier: 'elite' },
+   181→  // Star collect targets
+   182→  { category: 'star_collect', title: 'Star Conqueror', description: 'Collect 40 star-chips dropped by fallen opponents.', target: 40, reward: 110, tier: 'elite' },
+   183→  { category: 'star_collect', title: 'Star Emperor', description: 'Collect 60 star-chips dropped by fallen opponents.', target: 60, reward: 150, tier: 'elite' },
+   184→  // Score (body length) targets
+   185→  { category: 'score', title: 'World Serpent', description: 'Reach a body length of 400 in a single match.', target: 400, reward: 140, tier: 'elite' },
+   186→  { category: 'score', title: 'Mythical Coil', description: 'Reach a body length of 500 in a single match.', target: 500, reward: 200, tier: 'elite' },
+   187→  // Arena entry
+   188→  { category: 'arena_entry', title: 'Arena Warlord', description: 'Enter any arena 6 times.', target: 6, reward: 70, tier: 'elite' },
+   189→  { category: 'arena_entry', title: 'Arena Zealot', description: 'Enter any arena 8 times.', target: 8, reward: 100, tier: 'elite' },
+   190→  // Survival
+   191→  { category: 'survive', title: 'Immortal Coil', description: 'Survive for 240 seconds in any arena.', target: 240, reward: 150, tier: 'elite' },
+   192→  { category: 'survive', title: 'Timeless Venom', description: 'Survive for 300 seconds in any arena.', target: 300, reward: 200, tier: 'elite' },
+   193→  // Streak
+   194→  { category: 'extract_streak', title: 'Elite Phantom', description: 'Extract successfully 5 times today.', target: 5, reward: 200, tier: 'elite' },
+   195→  { category: 'extract_streak', title: 'Untouchable Legend', description: 'Extract successfully 6 times without a single death.', target: 6, reward: 300, tier: 'elite' },
+   196→];
+   197→
+   198→/** Map tier → daily pool */
+   199→const DAILY_POOLS: Record<LevelTier, ChallengeTemplate[]> = {
+   200→  novice: DAILY_NOVICE,
+   201→  operative: DAILY_OPERATIVE,
+   202→  veteran: DAILY_VETERAN,
+   203→  elite: DAILY_ELITE,
+   204→};
+   205→
+   206→// ── WEEKLY POOLS ──────────────────────────────────────────────────────────
+   207→
+   208→const WEEKLY_NOVICE: ChallengeTemplate[] = [
+   209→  { category: 'kill', title: 'Weekly Scrapper', description: 'Eliminate 8 rival snakes this week.', target: 8, reward: 60, tier: 'novice' },
+   210→  { category: 'kill', title: 'Weekly Apprentice', description: 'Eliminate 12 rival snakes this week.', target: 12, reward: 80, tier: 'novice' },
+   211→  { category: 'extract', title: 'Weekly Starter', description: 'Extract with at least 150 chips in a single match.', target: 150, reward: 70, tier: 'novice' },
+   212→  { category: 'extract', title: 'Weekly Earner', description: 'Extract with at least 250 chips in a single match.', target: 250, reward: 100, tier: 'novice' },
+   213→  { category: 'star_collect', title: 'Weekly Sparkle', description: 'Collect 20 star-chips this week.', target: 20, reward: 65, tier: 'novice' },
+   214→  { category: 'star_collect', title: 'Weekly Gatherer', description: 'Collect 30 star-chips this week.', target: 30, reward: 85, tier: 'novice' },
+   215→  { category: 'score', title: 'Weekly Hatchling', description: 'Reach a body length of 100 in a single match.', target: 100, reward: 60, tier: 'novice' },
+   216→  { category: 'arena_entry', title: 'Weekly Scout', description: 'Enter any arena 4 times this week.', target: 4, reward: 55, tier: 'novice' },
+   217→  { category: 'survive', title: 'Weekly Survivor', description: 'Survive for 120 seconds total this week.', target: 120, reward: 70, tier: 'novice' },
+   218→  { category: 'extract_streak', title: 'Weekly Outrun', description: 'Extract successfully 3 times this week.', target: 3, reward: 75, tier: 'novice' },
+   219→];
+   220→
+   221→const WEEKLY_OPERATIVE: ChallengeTemplate[] = [
+   222→  { category: 'kill', title: 'Weekly Butcher', description: 'Eliminate 20 rival snakes this week.', target: 20, reward: 120, tier: 'operative' },
+   223→  { category: 'kill', title: 'Weekly Annihilator', description: 'Eliminate 30 rival snakes this week.', target: 30, reward: 160, tier: 'operative' },
+   224→  { category: 'extract', title: 'Big Bank Weekly', description: 'Extract with at least 500 chips in a single match.', target: 500, reward: 140, tier: 'operative' },
+   225→  { category: 'extract', title: 'Mega Bank Weekly', description: 'Extract with at least 750 chips in a single match.', target: 750, reward: 180, tier: 'operative' },
+   226→  { category: 'star_collect', title: 'Star Magnate', description: 'Collect 50 star-chips this week.', target: 50, reward: 130, tier: 'operative' },
+   227→  { category: 'star_collect', title: 'Star Tycoon', description: 'Collect 75 star-chips this week.', target: 75, reward: 170, tier: 'operative' },
+   228→  { category: 'score', title: 'Weekly Titan', description: 'Reach a body length of 200 in a single match.', target: 200, reward: 120, tier: 'operative' },
+   229→  { category: 'arena_entry', title: 'Arena Warrior', description: 'Enter any arena 6 times this week.', target: 6, reward: 100, tier: 'operative' },
+   230→  { category: 'survive', title: 'Weekly Fortress', description: 'Survive for 180 seconds total this week.', target: 180, reward: 130, tier: 'operative' },
+   231→  { category: 'extract_streak', title: 'Weekly Phantom', description: 'Extract successfully 5 times this week.', target: 5, reward: 150, tier: 'operative' },
+   232→];
+   233→
+   234→const WEEKLY_VETERAN: ChallengeTemplate[] = [
+   235→  { category: 'kill', title: 'Weekly Executioner', description: 'Eliminate 40 rival snakes this week.', target: 40, reward: 220, tier: 'veteran' },
+   236→  { category: 'kill', title: 'Weekly Warlord', description: 'Eliminate 60 rival snakes this week.', target: 60, reward: 300, tier: 'veteran' },
+   237→  { category: 'extract', title: 'Veteran Fortune', description: 'Extract with at least 1 500 chips in a single match.', target: 1500, reward: 250, tier: 'veteran' },
+   238→  { category: 'extract', title: 'Veteran Jackpot', description: 'Extract with at least 3 000 chips in a single match.', target: 3000, reward: 350, tier: 'veteran' },
+   239→  { category: 'star_collect', title: 'Star Baron', description: 'Collect 100 star-chips this week.', target: 100, reward: 240, tier: 'veteran' },
+   240→  { category: 'star_collect', title: 'Star Overlord', description: 'Collect 150 star-chips this week.', target: 150, reward: 300, tier: 'veteran' },
+   241→  { category: 'score', title: 'Weekly Behemoth', description: 'Reach a body length of 350 in a single match.', target: 350, reward: 220, tier: 'veteran' },
+   242→  { category: 'arena_entry', title: 'Arena Veteran', description: 'Enter any arena 10 times this week.', target: 10, reward: 180, tier: 'veteran' },
+   243→  { category: 'survive', title: 'Weekly Colossus', description: 'Survive for 300 seconds total this week.', target: 300, reward: 250, tier: 'veteran' },
+   244→  { category: 'extract_streak', title: 'Weekly Specter', description: 'Extract successfully 8 times this week.', target: 8, reward: 280, tier: 'veteran' },
+   245→];
+   246→
+   247→const WEEKLY_ELITE: ChallengeTemplate[] = [
+   248→  { category: 'kill', title: 'Weekly Extinction', description: 'Eliminate 80 rival snakes this week.', target: 80, reward: 400, tier: 'elite' },
+   249→  { category: 'kill', title: 'Weekly Apocalypse', description: 'Eliminate 120 rival snakes this week.', target: 120, reward: 550, tier: 'elite' },
+   250→  { category: 'extract', title: 'Elite Fortune', description: 'Extract with at least 5 000 chips in a single match.', target: 5000, reward: 400, tier: 'elite' },
+   251→  { category: 'extract', title: 'Elite Jackpot', description: 'Extract with at least 10 000 chips in a single match.', target: 10000, reward: 600, tier: 'elite' },
+   252→  { category: 'star_collect', title: 'Star Emperor Weekly', description: 'Collect 200 star-chips this week.', target: 200, reward: 400, tier: 'elite' },
+   253→  { category: 'star_collect', title: 'Star God Weekly', description: 'Collect 300 star-chips this week.', target: 300, reward: 550, tier: 'elite' },
+   254→  { category: 'score', title: 'Weekly Mythic', description: 'Reach a body length of 600 in a single match.', target: 600, reward: 380, tier: 'elite' },
+   255→  { category: 'arena_entry', title: 'Arena Zealot Weekly', description: 'Enter any arena 15 times this week.', target: 15, reward: 300, tier: 'elite' },
+   256→  { category: 'survive', title: 'Weekly Immortal', description: 'Survive for 600 seconds total this week.', target: 600, reward: 450, tier: 'elite' },
+   257→  { category: 'extract_streak', title: 'Weekly Ghost King', description: 'Extract successfully 12 times this week.', target: 12, reward: 500, tier: 'elite' },
+   258→];
+   259→
+   260→/** Map tier → weekly pool */
+   261→const WEEKLY_POOLS: Record<LevelTier, ChallengeTemplate[]> = {
+   262→  novice: WEEKLY_NOVICE,
+   263→  operative: WEEKLY_OPERATIVE,
+   264→  veteran: WEEKLY_VETERAN,
+   265→  elite: WEEKLY_ELITE,
+   266→};
+   267→
+   268→// ---------------------------------------------------------------------------
+   269→// Streak bonus calculation
+   270→// ---------------------------------------------------------------------------
+   271→
+   272→/** Count consecutive days where ALL daily challenges were claimed */
+   273→async function calculateStreak(playerId: string): Promise<{ streak: number; multiplier: number }> {
+   274→  const today = utcToday();
+   275→
+   276→  // Compute the date 30 days ago as YYYY-MM-DD
+   277→  const d = new Date(today + 'T00:00:00Z');
+   278→  d.setUTCDate(d.getUTCDate() - 29);
+   279→  const thirtyDaysAgo = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+   280→
+   281→  // Fetch ALL daily challenges for the last 30 days in a single query
+   282→  const recentChallenges = await db.challenge.findMany({
+   283→    where: {
+   284→      playerId,
+   285→      type: 'daily',
+   286→      periodStart: { gte: thirtyDaysAgo },
+   287→    },
+   288→    select: { periodStart: true, claimed: true },
+   289→  });
+   290→
+   291→  // Group by date
+   292→  const byDate = new Map<string, boolean[]>();
+   293→  for (const c of recentChallenges) {
+   294→    const list = byDate.get(c.periodStart) ?? [];
+   295→    list.push(c.claimed);
+   296→    byDate.set(c.periodStart, list);
+   297→  }
+   298→
+   299→  // Walk backwards from today checking consecutive claimed days
+   300→  let streak = 0;
+   301→  for (let i = 0; i < 30; i++) {
+   302→    const checkDate = new Date(today + 'T00:00:00Z');
+   303→    checkDate.setUTCDate(checkDate.getUTCDate() - i);
+   304→    const key = `${checkDate.getUTCFullYear()}-${String(checkDate.getUTCMonth() + 1).padStart(2, '0')}-${String(checkDate.getUTCDate()).padStart(2, '0')}`;
+   305→
+   306→    const dayClaims = byDate.get(key);
+   307→    if (!dayClaims || dayClaims.length === 0) {
+   308→      // No challenges for this day
+   309→      if (i === 0) continue; // today may not have challenges yet
+   310→      break; // gap found — streak ends
+   311→    }
+   312→
+   313→    const allClaimed = dayClaims.every(Boolean);
+   314→    if (allClaimed) {
+   315→      streak++;
+   316→    } else if (i === 0) {
+   317→      // Today's challenges exist but not all claimed — don't break, just don't count today
+   318→      continue;
+   319→    } else {
+   320→      break; // unclaimed challenges on a past day — streak broken
+   321→    }
+   322→  }
+   323→
+   324→  // Calculate multiplier
+   325→  let multiplier = 1.0;
+   326→  if (streak >= 14) multiplier = 3.0;
+   327→  else if (streak >= 7) multiplier = 2.0;
+   328→  else if (streak >= 3) multiplier = 1.5;
+   329→
+   330→  return { streak, multiplier };
+   331→}
+   332→
+   333→// ---------------------------------------------------------------------------
+   334→// GET handler — fetch (and auto-generate) challenges
+   335→// ---------------------------------------------------------------------------
+   336→
+   337→export async function GET() {
+   338→  const session = await getSession();
+   339→  if (!session) {
+   340→    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+   341→  }
+   342→
+   343→  const playerId = session.playerId;
+   344→  const today = utcToday();
+   345→  const monday = utcMonday();
+   346→
+   347→  // Get player level for tier-based pool selection
+   348→  const player = await db.player.findUnique({ where: { id: playerId } });
+   349→  if (!player) {
+   350→    return NextResponse.json({ error: 'Player not found.' }, { status: 404 });
+   351→  }
+   352→
+   353→  const tier = getLevelTier(player.level);
+   354→  const rewardMult = levelRewardMultiplier(player.level);
+   355→
+   356→  // ── Anti-repeat: fetch yesterday's dailies and last week's weeklies ──
+   357→  const yesterday = utcYesterday();
+   358→  const lastMonday = utcLastMonday();
+   359→
+   360→  const [yesterdayDailies, lastWeekWeeklies] = await Promise.all([
+   361→    db.challenge.findMany({
+   362→      where: { playerId, type: 'daily', periodStart: yesterday },
+   363→      select: { title: true },
+   364→    }),
+   365→    db.challenge.findMany({
+   366→      where: { playerId, type: 'weekly', periodStart: lastMonday },
+   367→      select: { title: true },
+   368→    }),
+   369→  ]);
+   370→
+   371→  const excludeDailyTitles = new Set(yesterdayDailies.map((c) => c.title));
+   372→  const excludeWeeklyTitles = new Set(lastWeekWeeklies.map((c) => c.title));
+   373→
+   374→  // Check existing daily challenges for today
+   375→  const existingDaily = await db.challenge.findMany({
+   376→    where: { playerId, type: 'daily', periodStart: today },
+   377→  });
+   378→
+   379→  // Check existing weekly challenges for this week
+   380→  const existingWeekly = await db.challenge.findMany({
+   381→    where: { playerId, type: 'weekly', periodStart: monday },
+   382→  });
+   383→
+   384→  // ── Generate daily challenges if needed ──
+   385→  if (existingDaily.length === 0) {
+   386→    let pool = DAILY_POOLS[tier];
+   387→    // Exclude yesterday's titles (anti-repeat)
+   388→    pool = excludeByTitle(pool, excludeDailyTitles);
+   389→    // Fallback: if pool is too small after exclusions, use full pool
+   390→    if (pool.length < 3) pool = DAILY_POOLS[tier];
+   391→    // Pick 3 diverse challenges (different categories guaranteed)
+   392→    const templates = pickDiverse(pool, 3);
+   393→
+   394→    await db.challenge.createMany({
+   395→      data: templates.map((t) => ({
+   396→        playerId,
+   397→        type: 'daily',
+   398→        category: t.category,
+   399→        title: t.title,
+   400→        description: t.description,
+   401→        target: t.target,
+   402→        reward: Math.floor(t.reward * rewardMult),
+   403→        periodStart: today,
+   404→      })),
+   405→    });
+   406→  }
+   407→
+   408→  // ── Generate weekly challenges if needed ──
+   409→  if (existingWeekly.length === 0) {
+   410→    let pool = WEEKLY_POOLS[tier];
+   411→    // Exclude last week's titles (anti-repeat)
+   412→    pool = excludeByTitle(pool, excludeWeeklyTitles);
+   413→    // Fallback: if pool is too small after exclusions, use full pool
+   414→    if (pool.length < 2) pool = WEEKLY_POOLS[tier];
+   415→    // Pick 2 diverse challenges (different categories guaranteed)
+   416→    const templates = pickDiverse(pool, 2);
+   417→
+   418→    await db.challenge.createMany({
+   419→      data: templates.map((t) => ({
+   420→        playerId,
+   421→        type: 'weekly',
+   422→        category: t.category,
+   423→        title: t.title,
+   424→        description: t.description,
+   425→        target: t.target,
+   426→        reward: Math.floor(t.reward * rewardMult),
+   427→        periodStart: monday,
+   428→      })),
+   429→    });
+   430→  }
+   431→
+   432→  // Fetch all active challenges (today's daily + this week's weekly)
+   433→  const challenges = await db.challenge.findMany({
+   434→    where: {
+   435→      playerId,
+   436→      OR: [
+   437→        { type: 'daily', periodStart: today },
+   438→        { type: 'weekly', periodStart: monday },
+   439→      ],
+   440→    },
+   441→    orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+   442→  });
+   443→
+   444→  // Calculate streak info
+   445→  const streakInfo = await calculateStreak(playerId);
+   446→
+   447→  return NextResponse.json({
+   448→    challenges,
+   449→    streak: streakInfo.streak,
+   450→    streakMultiplier: streakInfo.multiplier,
+   451→    tier,
+   452→  });
+   453→}
+   454→
+   455→// ---------------------------------------------------------------------------
+   456→// POST handler — claim a completed challenge (with streak bonus)
+   457→// ---------------------------------------------------------------------------
+   458→
+   459→export async function POST(req: NextRequest) {
+   460→  const session = await getSession();
+   461→  if (!session) {
+   462→    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+   463→  }
+   464→
+   465→  const body = await req.json().catch(() => ({}));
+   466→  const challengeId = String(body.challengeId || '').trim();
+   467→
+   468→  if (!challengeId) {
+   469→    return NextResponse.json({ error: 'Missing challengeId.' }, { status: 400 });
+   470→  }
+   471→
+   472→  const playerId = session.playerId;
+   473→
+   474→  // Find the challenge and verify ownership
+   475→  const challenge = await db.challenge.findUnique({
+   476→    where: { id: challengeId },
+   477→  });
+   478→
+   479→  if (!challenge || challenge.playerId !== playerId) {
+   480→    return NextResponse.json({ error: 'Challenge not found.' }, { status: 404 });
+   481→  }
+   482→
+   483→  if (!challenge.completed) {
+   484→    return NextResponse.json({ error: 'Challenge not yet completed.' }, { status: 400 });
+   485→  }
+   486→
+   487→  if (challenge.claimed) {
+   488→    return NextResponse.json({ error: 'Already claimed.' }, { status: 400 });
+   489→  }
+   490→
+   491→  // Calculate streak bonus
+   492→  const { multiplier } = await calculateStreak(playerId);
+   493→  const baseReward = challenge.reward;
+   494→  const bonusReward = Math.floor(baseReward * (multiplier - 1)); // bonus = base × (mult - 1)
+   495→  const totalReward = baseReward + bonusReward;
+   496→
+   497→  // Credit reward chips and mark as claimed (atomic transaction)
+   498→  await db.$transaction([
+   499→    db.player.update({
+   500→      where: { id: playerId },
+   501→      data: {
+   502→        bankedChips: { increment: totalReward },
+   503→        totalEarned: { increment: totalReward },
+   504→      },
+   505→    }),
+   506→    db.challenge.update({
+   507→      where: { id: challengeId },
+   508→      data: { claimed: true },
+   509→    }),
+   510→  ]);
+   511→
+   512→  return NextResponse.json({
+   513→    success: true,
+   514→    reward: totalReward,
+   515→    baseReward,
+   516→    bonusReward,
+   517→    streakMultiplier: multiplier,
+   518→  });
+   519→}
+   520→
