@@ -7,21 +7,33 @@ Task: Fix blank screen and build mobile-first auth + dashboard
 
 Work Log:
 - Diagnosed blank screen: 3 root causes found and fixed
-  1. `output: "standalone"` in next.config.ts caused 1GB+ RAM usage → OOM kills → REMOVED, now ~200MB
-  2. Server component with `cookies()` + `db.player.findUnique()` caused 69% CPU hang during SSR → ELIMINATED all server-side DB calls from page
-  3. `tee` pipe in package.json dev script broke when shell exited → SIGPIPE → CHANGED to plain redirect
-- Built auth screen (login/register tabs + guest) using raw HTML strings via `dangerouslySetInnerHTML`
-- Built dashboard with zero-scroll portrait layout: header → player card → 3x2 bento grid → daily challenge strip → bottom nav
-- Dashboard rendered client-side via JS fetching `/api/auth/me` after page loads
-- All styles inline — zero Tailwind class dependencies, minimal CSS file
-- Page fits 100dvh with no scrolling in portrait mode
-- End-to-end verified: 16/16 content checks PASSED (SNAKESTAR, Sign In, Play as Guest, all bento items, all JS functions)
-- Response: 41,759 bytes, 200 OK, compiles in ~3s
+  1. `output: "standalone"` in next.config.ts → 1GB+ RAM → OOM killed → REMOVED
+  2. Server component with `cookies()` + `db.player.findUnique()` → 69% CPU hang → ELIMINATED
+  3. `tee` pipe in package.json dev script → SIGPIPE when shell exits → REMOVED
+- Built auth screen (login/register/guest) as pure server component with raw HTML
+- Built dashboard: header → player card → 3x2 bento grid → daily challenge strip → bottom nav
+- All styles inline, zero external CSS dependencies
+- 16/16 content checks PASSED
+
+---
+Task ID: 2
+Agent: Main
+Task: Add Google/Apple/Facebook social login buttons + Forgot Password link
+
+Work Log:
+- Added Google, Apple, Facebook inline SVG icons (matching old social-buttons.tsx design)
+- Social buttons appear on login tab with "or continue with" divider
+- Each social button shows "coming soon" message via error area when clicked
+- Added "Forgot Password?" link below Sign In button
+- Forgot password shows info message about PIN-based reset
+- Social section hidden on register tab to save vertical space
+- Register tab uses tighter gap(5px) for 5 fields to fit portrait viewport
+- 11/11 checks PASSED (including Google, Apple, Facebook, Forgot Password)
+- Response grew from 41KB to 48KB
 
 Stage Summary:
-- page.tsx: Zero-import server component with inline HTML + client-side auth/dashboard JS
-- layout.tsx: Minimal wrapper
-- globals.css: Bare minimum (margin reset)
-- next.config.ts: Clean, no standalone output
-- package.json: Removed `tee` pipe from dev script
-- All 16 content checks verified passing in single-session HTTP test
+- page.tsx: Zero-import server component, all HTML inline via dangerouslySetInnerHTML
+- Auth screen: Logo + tabs + form + forgot link + social buttons (3) + guest — fits 100dvh portrait
+- Social login: Google/Apple/Facebook buttons with SVG icons, shows "coming soon" on click
+- Forgot Password: Link below Sign In, shows PIN-reset instructions
+- Dashboard: client-side rendered via /api/auth/me, zero-scroll 3x2 bento layout
