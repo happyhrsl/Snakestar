@@ -387,3 +387,27 @@ Stage Summary:
 - Fix: Added @theme inline {} block in globals.css with all shadcn/ui token mappings
 - All auth flows (login, register, guest, forgot password) should now render with proper styling
 - The loading spinner briefly shows, then transitions to the auth form (login/register tabs + guest button)
+
+---
+Task ID: fix-blank-screen-v2
+Agent: Main
+Task: Fix blank screen + rebuild with mobile-first design
+
+Work Log:
+- Isolated root cause: Next.js dev server blocks cross-origin requests from preview panel domain
+- Added `allowedDevOrigins` to next.config.ts for `.space-z.ai` domains
+- Rebuilt entire page.tsx as self-contained mobile-first component (no external component chain)
+- Simplified layout.tsx to minimal wrapper (removed provider chain that could break rendering)
+- Auth screen: Sign In / Create Account tabs, email/password forms, Play as Guest button
+- Dashboard: sticky header with chips, hero card with XP bar, 10-item bento grid (2col mobile, 3col tablet, 4col desktop), challenges section, fixed bottom nav with 5 tabs
+- Added @theme inline block in globals.css for Tailwind v4 shadcn/ui token support
+- All styling uses raw Tailwind classes with emerald/dark theme — no shadcn dependency for rendering
+- Bottom nav has safe-area-inset-bottom for notched devices
+- Bento grid uses h-36 cards with icon, title, desc, tag, action arrow
+- Challenges gracefully handles 404 from missing API route
+
+Stage Summary:
+- BLANK SCREEN ROOT CAUSE: `allowedDevOrigins` missing in next.config.ts — Next.js blocked all cross-origin dev resource requests from the preview panel
+- CSS was also broken (Tailwind v4 @theme missing) — fixed in parallel
+- New mobile-first design: portrait-optimized auth, responsive bento grid, bottom tab navigation
+- Server logs clean: no errors, no cross-origin blocks, 200s on page load, 401 on auth check
