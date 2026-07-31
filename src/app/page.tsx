@@ -65,27 +65,29 @@ button,input,select,textarea{-webkit-tap-highlight-color:transparent;font-family
 .pw-str-label{font-size:10px;color:#475569;margin-top:2px}
 .pw-str-label b{font-weight:700}
 
-/* Auth container */
-#aw{height:100dvh;display:flex;align-items:center;justify-content:center;padding:16px;overflow:hidden}
-#af{width:100%;max-width:380px;display:flex;flex-direction:column;gap:8px}
+/* Auth container — portrait default */
+#aw{height:100dvh;display:flex;align-items:center;justify-content:center;padding:12px;overflow:hidden}
+#af{width:100%;max-width:360px;display:flex;flex-direction:column;gap:6px;max-height:100dvh}
 
 /* Landscape auth */
 @media (orientation:landscape) and (max-width:1023px){
-  #aw{flex-direction:row;gap:36px;padding:20px}
-  #af{max-width:340px;gap:6px}
-  .abrand{display:flex!important}
+  #aw{flex-direction:row;gap:24px;padding:16px}
+  #af{max-width:320px;gap:4px;max-height:100dvh}
+  .abrand{display:flex!important;flex-shrink:0}
   .aplogo{display:none!important}
   .af .ipt{height:34px}
+  .af .btn-go{height:36px}
+  .af .btn-s{height:34px}
 }
 
 /* Desktop auth */
 @media (min-width:1024px){
-  #aw{flex-direction:row;gap:0;padding:0}
-  .abrand{display:flex!important;width:400px;min-height:100dvh;padding:40px;background:linear-gradient(160deg,#0a1a14,#07070d 60%);border-right:1px solid #1e293b}
-  .abrand .bl{width:68px!important;height:68px!important}
-  .abrand .bt{font-size:32px!important}
+  #aw{flex-direction:row;gap:0;padding:0;align-items:stretch}
+  .abrand{display:flex!important;width:420px;min-height:100dvh;padding:40px 32px;justify-content:center;background:linear-gradient(160deg,#0a1a14,#07070d 60%);border-right:1px solid #1e293b;flex-shrink:0}
+  .abrand .bl{width:64px!important;height:64px!important}
+  .abrand .bt{font-size:30px!important}
   .abrand .bart{display:block!important}
-  #af{max-width:400px;padding:36px;gap:10px}
+  #af{max-width:420px;padding:32px;gap:8px;justify-content:center}
   .aplogo{display:none!important}
 }
 
@@ -169,14 +171,10 @@ const AUTH_HTML = `
       <p style="color:#475569;font-size:9px;letter-spacing:2px;text-transform:uppercase">Hunt · Harvest · Extract. <span style="color:#34d399;font-weight:700">Don't get caught.</span></p>
     </div>
 
-    <!-- Card header -->
-    <div class="fd1" style="background:#0f0f1a;border:1px solid #1e293b;border-radius:14px 14px 0 0;padding:12px 14px 8px">
-      <h2 style="font-size:15px;font-weight:700">Enter the arena</h2>
-      <p style="font-size:11px;color:#64748b;margin-top:2px">Sign in or create an account to play.</p>
-    </div>
-
-    <!-- Card body -->
-    <div style="background:#0f0f1a;border-left:1px solid #1e293b;border-right:1px solid #1e293b;padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+    <!-- Single card -->
+    <div class="fd1" style="background:#0f0f1a;border:1px solid #1e293b;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;min-height:0">
+      <h2 style="font-size:14px;font-weight:700">Enter the arena</h2>
+      <p style="font-size:10px;color:#64748b;margin-top:-4px">Sign in or create an account to play.</p>
       <!-- Tabs -->
       <div class="fd1" style="display:flex;background:#0a0a12;border-radius:10px;padding:3px;border:1px solid #1e293b">
         <button id="tl" onclick="sw('l')" style="flex:1;padding:7px 0;border-radius:8px;border:none;font-size:11px;font-weight:700;cursor:pointer;background:#10b981;color:white;transition:all 0.2s">Sign In</button>
@@ -212,10 +210,6 @@ const AUTH_HTML = `
           Play as Guest
         </button>
         <p style="text-align:center;font-size:9px;color:#334155">⚡ Guests get 150 starter chips. Register to keep your progress.</p>
-        <div style="display:flex;justify-content:space-between;font-size:11px">
-          <button class="link" onclick="sw('r')">Don't have an account? <b>Register</b></button>
-          <button class="link" onclick="ofg()">Forgot Password?</button>
-        </div>
       </div>
 
       <!-- REGISTER FORM (hidden) -->
@@ -259,13 +253,13 @@ const AUTH_HTML = `
         <button type="submit" id="br" class="btn-go">Create Account</button>
         <p style="text-align:center;font-size:11px;margin-top:2px">Already have an account? <button class="link" onclick="sw('l')"><b>Login</b></button></p>
       </form>
+      <!-- Login bottom links -->
+      <div id="log-links" class="fd5" style="display:flex;justify-content:space-between;font-size:11px">
+        <button class="link" onclick="sw('r')">Don't have an account? <b>Register</b></button>
+        <button class="link" onclick="ofg()">Forgot Password?</button>
+      </div>
     </div>
 
-    <!-- Card footer (login view links) -->
-    <div id="log-links" class="fd4" style="background:#0f0f1a;border:1px solid #1e293b;border-radius:0 0 14px 14px;padding:8px 14px;display:flex;justify-content:space-between;font-size:11px">
-      <button class="link" onclick="sw('r')">Don't have an account? <b>Register</b></button>
-      <button class="link" onclick="ofg()">Forgot Password?</button>
-    </div>
   </div>
 </div>
 
