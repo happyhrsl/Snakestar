@@ -1,8 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ═══════════════════════════════════════════════════════════════════════════
+// Snakestar — Prisma Schema  (SQLite)
+// 16 models covering players, clans, social, matches, rewards, moderation
+// ═══════════════════════════════════════════════════════════════════════════
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +12,337 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Player — core identity, wallet, progression, social channels
+// ─────────────────────────────────────────────────────────────────────────────
+model Player {
+  id                   String   @id @default(cuid())
+  userTag              String   @unique                       // e.g. "COBRA-4231"
+  email                String?  @unique                       // null for guest accounts
+  passwordHash         String?                                // null for guests
+  displayName           String                                 // 1-20 chars
+  country              String   @default("US")               // ISO country code
+  region               String?                                // broader region grouping
+  avatarPreset         String?                                // emoji preset e.g. "🐍"
+  avatarUrl            String?                                // custom uploaded image URL
+  role                 String   @default("player")           // player | admin
+  banned               Boolean  @default(false)
+  bannedReason         String?
+  bannedAt             DateTime?
+  securityPinHash      String?                                // bcrypt hash, not plaintext
+  walletChips          Int      @default(0)                   // main currency
+  yearlyPurchasedChips Int      @default(0)                   // annual buy cap tracking (max 2 500 000)
+  xp                   Int      @default(0)
+  level                Int      @default(1)
+  equippedCosmetics    String   @default("{}")               // JSON string of cosmetic slot IDs
+  // Social channels (showcased on public profile)
+  instagram            String?
+  youtube              String?
+  twitch               String?
+  lastLoginAt          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // ── Relations ──
+  dailyRewards     DailyReward[]
+  challenges       Challenge[]
+  clanMemberships  ClanMember[]
+  clanChats        ClanChat[]
+  friendshipsA     Friendship[]  @relation("PlayerAFriendship")
+  friendshipsB     Friendship[]  @relation("PlayerBFriendship")
+  matchHistory     MatchHistory[]
+  promoClaims      PromoCodeClaim[]
+  videoRewards     VideoReward[]
+  hallOfFame       HallOfFame[]
+  invitesSent      Invite[]      @relation("InviteSent")
+  invitesReceived  Invite[]      @relation("InviteReceived")
+  blocksInitiated  Block[]       @relation("Blocker")
+  blocksReceived   Block[]       @relation("Blocked")
+  reportsFiled     Report[]      @relation("Reporter")
+  reportsReceived  Report[]      @relation("Reported")
+  broadcastsFrom   BroadcastMessage[] @relation("BroadcastFrom")
+  broadcastsTo     BroadcastMessage[] @relation("BroadcastTo")
+  // Leader clan reference (Clan.leaderId → Player.id)
+  ledClan          Clan?         @relation("ClanLeader")
 }
 
-model Post {
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. DailyReward — streak-based daily login claims
+// ─────────────────────────────────────────────────────────────────────────────
+model DailyReward {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  playerId  String
+  day       Int                                     // day number in streak (1-based)
+  claimedAt DateTime @default(now())
+
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. Challenge — daily / weekly challenges with streak multipliers
+// ─────────────────────────────────────────────────────────────────────────────
+model Challenge {
+  id               String   @id @default(cuid())
+  playerId         String
+  type             String                                  // e.g. "kills", "extractions", "score"
+  progress         Int      @default(0)
+  target           Int
+  completed        Boolean  @default(false)
+  claimed          Boolean  @default(false)
+  xpReward         Int      @default(0)
+  chipReward       Int      @default(0)
+  streakMultiplier Float    @default(1.0)                     // multiplier based on daily streak
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. Clan — syndicate guilds with treasury and level system
+// ─────────────────────────────────────────────────────────────────────────────
+model Clan {
+  id           String   @id @default(cuid())
+  name         String                                // display name
+  tag          String   @unique                      // 3-5 char tag, e.g. "VIPR"
+  emblem       String?                               // emoji emblem
+  leaderId     String   @unique                       // Player who created/leads
+  level        Int      @default(1)
+  xp           Int      @default(0)
+  treasuryChips Int     @default(0)                   // pooled chips
+  memberCount  Int      @default(1)                   // denormalized for quick reads
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  leader       Player   @relation("ClanLeader", fields: [leaderId], references: [id])
+  members      ClanMember[]
+  chat         ClanChat[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. ClanMember — join-table with role (Leader, Officer, Viper)
+// ─────────────────────────────────────────────────────────────────────────────
+model ClanMember {
+  id       String   @id @default(cuid())
+  clanId   String
+  playerId String
+  role     String   @default("Viper")               // Leader | Officer | Viper
+  joinedAt DateTime @default(now())
+
+  clan     Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([clanId, playerId])
+  @@index([playerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. ClanChat — clan-only message feed
+// ─────────────────────────────────────────────────────────────────────────────
+model ClanChat {
+  id        String   @id @default(cuid())
+  clanId    String
+  playerId  String
+  message   String                                // max 200 chars, validated server-side
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id])
+
+  @@index([clanId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. Friendship — bidirectional friend / rival with kill tracking
+// ─────────────────────────────────────────────────────────────────────────────
+model Friendship {
+  id         String   @id @default(cuid())
+  playerAId  String
+  playerBId  String
+  type       String   @default("friend")             // friend | rival
+  status     String   @default("pending")             // pending | accepted
+  killsByA   Int      @default(0)                     // times A killed B
+  killsByB   Int      @default(0)                     // times B killed A
+  createdAt  DateTime @default(now())
+
+  playerA    Player   @relation("PlayerAFriendship", fields: [playerAId], references: [id], onDelete: Cascade)
+  playerB    Player   @relation("PlayerBFriendship", fields: [playerBId], references: [id], onDelete: Cascade)
+
+  @@unique([playerAId, playerBId])
+  @@index([playerAId])
+  @@index([playerBId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. MatchHistory — HMAC-signed match results for anti-cheat
+// ─────────────────────────────────────────────────────────────────────────────
+model MatchHistory {
+  id            String    @id @default(cuid())
+  playerId      String
+  tierId        String                                  // arena tier e.g. "tier-1"
+  result        String                                  // extracted | died
+  score         Int
+  kills         Int      @default(0)
+  carriedChips  Int      @default(0)                    // stars collected during match
+  commission    Int      @default(0)                    // 35% of carriedChips (keep rate)
+  netBanked     Int      @default(0)                    // commission - buyIn
+  xpEarned      Int      @default(0)
+  matchId       String                                 // unique per session, prevents replay
+  signature     String                                 // HMAC-SHA256 from game server
+  killerName    String?                                // who killed this player
+  killerId      String?
+  duration      Int      @default(0)                    // match length in seconds
+  createdAt     DateTime @default(now())
+
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, createdAt])
+  @@index([matchId])                                    // duplicate match prevention
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. PromoCode — admin-created promotional codes
+// ─────────────────────────────────────────────────────────────────────────────
+model PromoCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  chipReward Int
+  maxUses   Int
+  usedCount Int       @default(0)
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  claims    PromoCodeClaim[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. PromoCodeClaim — per-player redemption tracking (survives restart)
+// ─────────────────────────────────────────────────────────────────────────────
+model PromoCodeClaim {
+  id          String   @id @default(cuid())
+  playerId    String
+  promoCodeId String
+  claimedAt   DateTime @default(now())
+
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+
+  @@unique([playerId, promoCodeId])
+  @@index([playerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. VideoReward — ad-watch chip rewards (60s cooldown, DB-persisted)
+// ─────────────────────────────────────────────────────────────────────────────
+model VideoReward {
+  id           String   @id @default(cuid())
+  playerId     String
+  source       String                                // store | end_overlay
+  chipsAwarded Int
+  claimedAt    DateTime @default(now())
+
+  player       Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, claimedAt])                      // cooldown query
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. HallOfFame — annual induction snapshot (year, scope, rank)
+// ─────────────────────────────────────────────────────────────────────────────
+model HallOfFame {
+  id          String   @id @default(cuid())
+  playerId    String
+  year        Int                                   // championship year e.g. 2026
+  scope       String                                // global | regional | country
+  rank        Int                                   // 1-100
+  walletChips Int                                   // snapshot of chips at induction
+  country     String                                // player's country at induction time
+  region      String?
+  tier        String?                               // milestone tier name
+  inductedAt  DateTime @default(now())
+
+  player      Player   @relation(fields: [playerId], references: [id])
+
+  @@index([year, scope])
+  @@index([country, year])
+  @@index([walletChips])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. Invite — co-op match invites between friends
+// ─────────────────────────────────────────────────────────────────────────────
+model Invite {
+  id             String    @id @default(cuid())
+  fromPlayerId   String
+  toPlayerId     String
+  tierId         String                                // invited to this arena tier
+  status         String    @default("pending")         // pending | accepted | declined | expired
+  counterTierId  String?                               // counter-invite tier
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  fromPlayer     Player    @relation("InviteSent", fields: [fromPlayerId], references: [id], onDelete: Cascade)
+  toPlayer       Player    @relation("InviteReceived", fields: [toPlayerId], references: [id], onDelete: Cascade)
+
+  @@index([toPlayerId, status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. Block — player blocking (prevent interactions)
+// ─────────────────────────────────────────────────────────────────────────────
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker   Player   @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   Player   @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 15. Report — player reporting / moderation queue
+// ─────────────────────────────────────────────────────────────────────────────
+model Report {
+  id         String    @id @default(cuid())
+  reporterId String
+  reportedId String
+  reason     String                                // e.g. "cheating", "harassment"
+  details    String?
+  status     String    @default("pending")          // pending | reviewed | actioned
+  adminNote  String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  reporter   Player    @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported   Player    @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 16. BroadcastMessage — system / admin / challenge notifications
+// ─────────────────────────────────────────────────────────────────────────────
+model BroadcastMessage {
+  id           String    @id @default(cuid())
+  type         String                                 // system | admin | challenge | invite
+  fromPlayerId String?                                // null for system broadcasts
+  toPlayerId   String?                                // null = broadcast to all
+  title        String
+  message      String
+  data         String?                                // JSON string for extra payload
+  read         Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  fromPlayer   Player?   @relation("BroadcastFrom", fields: [fromPlayerId], references: [id])
+  toPlayer     Player?   @relation("BroadcastTo", fields: [toPlayerId], references: [id])
+
+  @@index([toPlayerId, read, createdAt])
 }

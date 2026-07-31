@@ -1,0 +1,15 @@
+// Purpose: Detect if viewport is mobile (< 768px)
+import { useState, useEffect } from "react";
+
+export function useMobile(): boolean {
+  const [mobile, setMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  return mobile;
+}

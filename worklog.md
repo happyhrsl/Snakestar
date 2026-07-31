@@ -278,3 +278,88 @@ Stage Summary:
 - ARCHITECTURE.md now has: Security (existing), Missing Features Audit (14 subsections), Production Suggestions (8 items)
 - BUILD-PLAN.md now has: 57 commits (was 49), new commits for spectate, HOF induction, shared components
 - All changes pushed to GitHub: commit 05ca72c
+
+---
+Task ID: 1.1
+Agent: full-stack-developer
+Task: DB Schema - all 16+ Prisma models
+
+Work Log:
+- Read architecture, screen-content docs for field details
+- Wrote prisma/schema.prisma with 16 models
+- Ran db:push successfully
+
+Stage Summary:
+- 16 models defined: Player, DailyReward, Challenge, Clan, ClanMember, ClanChat, Friendship, MatchHistory, PromoCode, PromoCodeClaim, VideoReward, HallOfFame, Invite, Block, Report, BroadcastMessage
+- SQLite DB created at db/custom.db
+---
+Task ID: 1.2
+Agent: full-stack-developer
+Task: Game Config - constants.ts + game-config.ts
+
+Work Log:
+- Read reference docs: 02-game-config.md (30 tiers, chip packs, daily rewards, cosmetics, HOF, championship prizes, season pass), arena-selector.md, vault-chip-store.md, claims-daily-rewards.md, pass.md, hall-of-fame.md, game-rules-modal.md, ARCHITECTURE.md
+- Wrote src/lib/constants.ts (121 lines) with app-wide constants: APP_NAME, JWT config, spending caps, store ad limits, avatar presets, clan emblems/roles, cosmetic slots, streak multipliers, 24 countries, 7 milestone badges
+- Wrote src/lib/game-config.ts (162 lines) with: 30 ARENA_TIERS (10c to 1B buy-in, 25-60 bots, graduated commission 0.35), 3 PRACTICE_TIERS, 7 DAILY_REWARDS, 10 CHIP_PACKS (₹10-₹15,000), 10 daily + 5 weekly CHALLENGE_TEMPLATES, 20 SEASON_PASS_TIERS, 6 HOF_TIERS, 4 CHAMPIONSHIP_PRIZES
+
+Stage Summary:
+- 30 ARENA_TIERS defined (10c to 1B buy-in) with bots, xpMultiplier, mapRadius, maxFood, maxStars, commissionRate, starChipValue, foodValue
+- 3 PRACTICE_TIERS (Practice Pit, Training Grounds, Proving Grounds) with free buy-in
+- 10 CHIP_PACKS with INR ($0.12-$175) and USD pricing, bonus percentages
+- 7 DAILY_REWARDS (10-1000 chips), Day 7 ad 2x multiplier in constants.ts
+- 10 daily + 5 weekly challenge templates with tier scaling
+- 20 season pass tiers (free + elite tracks), Elite cost = 100K chips
+- 6 HOF tiers (100K to 1 Crore), 4 championship prize tiers
+- All data sourced from reference docs, kept under 400 lines total
+---
+Task ID: 1.3
+Agent: full-stack-developer
+Task: Shared Types - game.ts, player.ts, api.ts
+
+Work Log:
+- Read architecture and screen-content docs for type shapes
+- Read prisma schema to align field names and types
+- Wrote game.ts with in-game entity types (Snake, Food, Star, GameState, KillFeedEntry, PlayerInput, StateDelta, MatchResult, ReplayFrame, ArenaTier)
+- Wrote player.ts with player/social types (PublicPlayer, FullPlayer, FriendRelation, ClanInfo, ClanMemberInfo, ChatMessage, ChallengeDisplay, DailyRewardDay, CoOpInvite, MatchHistoryEntry)
+- Wrote api.ts with API request/response types (ApiResponse, AuthResponse, LoginRequest, RegisterRequest, PaginatedResponse, LeaderboardEntry, ArenaStats, ChipTransactionType)
+- All types use export interface (except ChipTransactionType which is a union alias)
+- Line counts: game.ts ~108, player.ts ~130, api.ts ~68 (all within limits)
+
+Stage Summary:
+- 3 type files created with all interfaces needed for Phase 1+
+- Types align with Prisma schema field names and screen-content data shapes
+
+---
+Task ID: 1.5
+Agent: full-stack-developer
+Task: Auth API - 12 routes
+
+Work Log:
+- Wrote 12 auth API route files
+- Ran lint, fixed import path in login route (lib/db → @/lib/db)
+- All 12 files pass lint cleanly
+
+Stage Summary:
+- 12 routes: register, login, guest, logout, me, token, change-password, change-pin, forgot-password, social-login, social-callback, upgrade
+- All routes use JWT httpOnly cookies, rate limiting, bcrypt hashing
+- Guest accounts can upgrade to registered accounts
+---
+Task ID: 1.7-1.10
+Agent: full-stack-developer
+Task: Auth screens, shared components, layout, dashboard, page.tsx, layout.tsx
+
+Work Log:
+- Wrote 6 auth screen components (auth-gate, login-form, register-form, forgot-password-form, social-buttons, password-strength)
+- Wrote 2 shared components (not-signed-in, report-modal)
+- Wrote 6 layout components (theme-provider, header, sidebar, mobile-nav, footer, sub-page-nav)
+- Wrote 5 dashboard components (hero-banner, bento-gate, bento-grid, challenges-sidebar, last-match-summary)
+- Wrote page.tsx, dashboard-content.tsx, layout.tsx, globals.css
+- Fixed lint: duplicate import in header.tsx, escaped newline in register-form.tsx
+- Ran lint: 0 errors
+- Started dev server: compiled / successfully, GET / 200 in 6.5s, no runtime errors
+
+Stage Summary:
+- Full lobby visible: auth screens (login/register/forgot/guest) → dashboard with hero, bento grid, challenges
+- Responsive: sidebar on desktop, bottom nav with sheet on mobile
+- Dark theme with emerald/amber gaming aesthetic
+- 22 files created total
