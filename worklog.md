@@ -37,3 +37,27 @@ Stage Summary:
 - Social login: Google/Apple/Facebook buttons with SVG icons, shows "coming soon" on click
 - Forgot Password: Link below Sign In, shows PIN-reset instructions
 - Dashboard: client-side rendered via /api/auth/me, zero-scroll 3x2 bento layout
+
+---
+Task ID: 3
+Agent: Main
+Task: Complete UI rebuild — fresh design for portrait, landscape, and desktop modes
+
+Work Log:
+- Completely rewrote page.tsx from scratch with fresh, clean design
+- Auth screen: brand panel (landscape/desktop) + form area (portrait logo) + tab switcher + login form with password toggle + forgot password modal (full form with email/PIN/new password) + Google/Apple/Facebook social buttons + guest play
+- 3 responsive CSS media queries:
+  - Portrait (default): stacked vertical, 100dvh, zero scroll
+  - Landscape (orientation:landscape + max-width:1023px): side-by-side brand+form, dashboard uses row layout
+  - Desktop (min-width:1024px): full brand panel on left, dashboard has sidebar nav
+- Dashboard: header with chips/logout, player card with XP bar, 6-item bento grid, daily challenge with live timer, bottom nav (mobile/tablet) or sidebar nav (desktop)
+- Browser verified all 3 viewport modes: portrait 390x844, landscape 844x390, desktop 1440x900
+- All interactive elements confirmed: Sign In, Register, Google, Apple, Facebook, Forgot Password, Play as Guest
+- Page renders 63KB, compiles in ~150ms
+
+Stage Summary:
+- Fresh design with CSS animations (fadeUp, glow pulse), glass-morphism header, gradient bento cards
+- 3-mode responsive layout via CSS media queries
+- Forgot Password: Full modal with email/PIN/new password form that calls /api/auth/forgot-password
+- Social login buttons with inline SVGs (Google, Apple, Facebook)
+- Dashboard: Live countdown timer for daily challenge, responsive bento grid
