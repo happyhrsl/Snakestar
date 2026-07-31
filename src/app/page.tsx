@@ -723,6 +723,10 @@ function Dashboard({ player }: { player: FullPlayer }) {
 export default function Home() {
   const { status, player, setPlayer, logout } = useAuthStore();
 
+  // Show auth screen immediately (no loading state)
+  // Session check happens in background via useEffect
+  const [checking, setChecking] = useState(true);
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => (r.ok ? r.json() : null))
@@ -733,12 +737,9 @@ export default function Home() {
           logout();
         }
       })
-      .catch(() => logout());
+      .catch(() => logout())
+      .finally(() => setChecking(false));
   }, [setPlayer, logout]);
-
-  if (status === 'loading') {
-    return <LoadingScreen />;
-  }
 
   if (status === 'authenticated' && player) {
     return <Dashboard player={player} />;
