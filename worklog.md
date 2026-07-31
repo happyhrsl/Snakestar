@@ -363,3 +363,27 @@ Stage Summary:
 - Responsive: sidebar on desktop, bottom nav with sheet on mobile
 - Dark theme with emerald/amber gaming aesthetic
 - 22 files created total
+
+---
+Task ID: fix-blank-screen
+Agent: Main
+Task: Fix blank screen issue on the lobby page
+
+Work Log:
+- Diagnosed that the dev server was returning 200 OK with valid HTML (15KB) but page appeared blank
+- Found root cause: Tailwind v4 was installed but globals.css had no @theme block to register shadcn/ui CSS variables as Tailwind utility tokens
+- The old tailwind.config.ts was v3 format (hsl(var(--...)) syntax) which Tailwind v4 completely ignores
+- All shadcn/ui utility classes (bg-background, text-primary, bg-card, text-muted-foreground, border-primary, etc.) were generating NO CSS
+- Added @theme inline {} block to globals.css mapping all 30+ CSS variables to --color-* tokens
+- Added missing --chart-1 through --chart-5 variables that shadcn/ui expects
+- Verified compiled CSS now includes proper utility classes (156KB CSS with bg-background, text-primary, etc.)
+- Confirmed bg-background resolves to background-color: var(--background) (direct, no intermediate variable)
+- Removed unused BookOpen import from auth-gate.tsx
+- Verified /api/auth/me returns 401 correctly for unauthenticated users
+- Verified /api/auth/guest creates guest accounts successfully
+
+Stage Summary:
+- Root cause: Tailwind v4 requires @theme block to create utility classes from CSS custom properties
+- Fix: Added @theme inline {} block in globals.css with all shadcn/ui token mappings
+- All auth flows (login, register, guest, forgot password) should now render with proper styling
+- The loading spinner briefly shows, then transitions to the auth form (login/register tabs + guest button)
