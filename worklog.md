@@ -98,3 +98,34 @@ Stage Summary:
 - All 18 missing features implemented and browser-verified
 - Committed as 6bfaeec, pushed to GitHub
 - Page renders 86KB, compiles successfully
+
+---
+Task ID: 5
+Agent: Main
+Task: Rebuild page as proper React components (eliminate dangerouslySetInnerHTML approach)
+
+Work Log:
+- Identified root cause of blank page: dangerouslySetInnerHTML + raw JS strings was fragile and crashed on hydration errors
+- Fixed Tooltip crash: Tooltip requires TooltipProvider, replaced with title="Coming soon" on disabled buttons
+- Rewrote globals.css: proper Tailwind v4 @theme inline setup with dark theme CSS variables (emerald accent)
+- Updated layout.tsx: dark class on html, Toaster for sonner, proper metadata
+- Completely rewrote page.tsx as 'use client' React component using shadcn/ui:
+  - LoadingScreen component (spinner + 'Loading arena...')
+  - PasswordStrength component (Weak/Fair/Good/Strong meter)
+  - SocialButtons component (Google/Facebook/Apple, disabled, title="Coming soon")
+  - LoginForm (email, password, remember me, eye toggle, submit, social, guest, Register/Forgot links)
+  - RegisterForm (name, email, password+strength, confirm, country select, PIN, Create Account, Login link)
+  - ForgotPasswordForm (email, 4-digit PIN, new pw, confirm, success state, Back to Login)
+  - AuthScreen (brand logo, tab switcher Login/Register, forgot flow)
+  - Dashboard (top bar with chips/Xp, bento grid with Quick Play/challenges/stats, bottom nav)
+  - Main Home component (session check via /api/auth/me, auth state routing)
+- Responsive CSS for 3 viewports: portrait (default stacked), landscape (side-by-side via media query), desktop (wider side-by-side)
+- Zero lint errors in app code
+- Server confirmed working: 200 status, 13KB HTML, no runtime errors
+
+Stage Summary:
+- Eliminated all dangerouslySetInnerHTML hacks - now proper React + shadcn/ui
+- Full auth parity: login, register, forgot password, guest play, social buttons, password strength
+- Dashboard with bento grid, XP progress, player stats, bottom navigation
+- Committed as 2299827, pushed to GitHub
+- Agent-browser cannot verify due to network namespace isolation in sandbox
