@@ -256,3 +256,25 @@
 - **Output file:** `/home/z/my-project/screen-content/dashboard.md`
 - **Status:** ✅ Complete
 - **Summary:** Complete visual screen walkthrough of the Dashboard (Lobby Headquarters) — the default view after login. Documented: (1) Sticky header with 4 controls (logo/title, player badge with avatar+level+name, chips wallet with Secure Chips label and pulse-animated icon, Rules & Guide button, Sign Out button), (2) Hero banner with Lobby Headquarters label, WELCOME BACK heading (dynamic name), XP progress bar (computed from xpForLevel curve), and LAUNCH MATCHMAKER button, (3) All 12 Bento Gate cards with exact badge/title/description/footLeft/footRight text, accent colors, icon, and tab targets (including wide Gate 12), (4) BentoGate component structure and full 11-row accent color class reference table, (5) Tactical Challenges sidebar panel with header (tier badge in 4 color variants, streak multiplier indicator), daily/weekly challenge card structures with 3-state progress bars and 3-state claim buttons, last match summary card, (6) All 13 sidebar tabs with exact labels, icons, active color classes, and admin-only filtering, (7) Sub-page navigation bar with back button and breadcrumb, (8) Tab-to-component mapping table, (9) Footer with copyright and version info, (10) Pre-dashboard states (loading, auth gate, in-game), (11) Imports inventory (20 lucide icons, 12 panel components, 2 modals).
+
+---
+
+Task ID: audit-complete
+Agent: main
+Task: Comprehensive architecture audit - find all missing features and suggest production improvements
+
+Work Log:
+- Read ARCHITECTURE.md (835 lines) - confirmed security section exists (lines 567-821), comprehensive
+- Read BUILD-PLAN.md (153 lines) - 49 commits across 6 phases
+- Launched Explore agent to cross-reference all 18 screen-content files against architecture
+- Agent found 27 gaps: spectate, co-op invite, block player, social channels, watch video on end overlays, death vignette, clan wars/roles/level/emblem, HOF reset, rivals hunt, challenge dispatch, regional allies, not-signed-in, chat mention, online replay, preset avatars, cosmetic slots, streak multipliers, real-money pricing, anti-monopoly lock, ad system correction
+- Manually verified: no reporting system, no sound toggle, no concurrent session prevention, no disconnect safety, no profanity filter, no DB backup, no room sharding docs, no timezone handling
+- Updated ARCHITECTURE.md: added 14 new sections (A-N) covering all 27 screen-content gaps + 8 production suggestions (P1-P8)
+- Updated file structure with 13 new API routes, 4 new component files
+- Updated BUILD-PLAN.md: 49 → 57 commits, expanded existing commits with missing details
+- Committed and pushed to GitHub
+
+Stage Summary:
+- ARCHITECTURE.md now has: Security (existing), Missing Features Audit (14 subsections), Production Suggestions (8 items)
+- BUILD-PLAN.md now has: 57 commits (was 49), new commits for spectate, HOF induction, shared components
+- All changes pushed to GitHub: commit 05ca72c
