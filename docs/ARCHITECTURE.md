@@ -564,6 +564,263 @@ One server process handles multiple rooms:
 
 ---
 
+## Security & Anti-Cheat
+
+### Why This Matters
+The old Venom Arena had real security holes: admin routes with NO authentication, PIN stored in plaintext, no rate limiting, in-memory promo tracking (exploitable on restart), and no movement validation. Snakestar fixes ALL of these.
+
+---
+
+### Anti-Cheat: Server Is The Truth
+
+The client is NEVER trusted. The server is ALWAYS authoritative. The client only sends INPUT (steering angle + boost state). The server computes everything else.
+
+**What the client sends per tick (ONLY these):**
+```
+{
+  "angle": 1.57,        // steering direction (radians)
+  "wantsBoost": false    // boost button held?
+}
+```
+
+**What the client NEVER sends:**
+- Position (server computes from angle + speed)
+- Score (server tracks food eating)
+- Body length (server computes from score)
+- Carried chips (server tracks star collection)
+- Other players' positions (client only receives, never sends)
+
+**Movement Validation (server-side, every tick):**
+```
+Max distance per tick = speed × tickInterval
+If snake moved more than maxDistance → teleport detected → kick player
+
+Speed must be either BASE_SPEED (4.5) or BOOST_SPEED (8.0)
+If speed is anything else → speed hack detected → kick player
+
+Boost requires: bodyLength > 8 AND score > INITIAL_SPAWN_SCORE (20)
+If boosting without meeting requirements → kick player
+
+Turn rate must be physically possible given TURN_BASE and snake's score
+If angle changed more than max turn per tick → turn hack → snap to max allowed turn
+```
+
+**Food Collection Validation:**
+```
+Client does NOT tell server "I ate food."
+Server checks: is snake head within collision radius of any food orb?
+If yes → server removes food, increases score, grows body.
+Client cannot eat food it's not near.
+```
+
+**Star Collection Validation:**
+```
+Same as food. Server checks head proximity to stars.
+Bots are excluded from star collision checks in server code.
+Client cannot collect stars through code modification.
+```
+
+**Extraction Validation:**
+```
+Server tracks extraction timer server-side.
+Client sends wantsBoost = false (gliding).
+Server checks: did angle change > 0.08 rad since last tick?
+If yes → reset extraction progress to 0.
+Client cannot fake extraction completion.
+```
+
+**Match Result Signing:**
+```
+When match ends, game server creates an HMAC-signed payload:
+{
+  "playerId": "...",
+  "tierId": "tier-1",
+  "score": 142,
+  "kills": 3,
+  "carriedChips": 275,
+  "result": "extracted",    // or "died"
+  "commission": 96,        // 35% of 275
+  "netBanked": 179,
+  "xp": 1445,
+  "timestamp": 1722345678,
+  "signature": "hmac-sha256(...)"  // signed with server secret
+}
+
+POST /api/match/result verifies the HMAC signature before updating DB.
+Client CANNOT forge a match result (doesn't know the server secret).
+Client CANNOT modify chips/score in the payload (signature breaks).
+```
+
+**Duplicate Match Prevention:**
+```
+Server generates unique matchId per session.
+Client submits matchId with result.
+API checks: has this matchId already been processed?
+If yes → reject ("match already recorded").
+Prevents replaying a good result multiple times.
+```
+
+**AFK Detection:**
+```
+If player sends same angle for 60+ seconds (1200 ticks):
+  → Server marks as AFK
+  → AFK players don't count toward real player count
+  → AFK players get kicked after 120 seconds
+  → Prevents chip farming by going AFK in safe corner
+```
+
+---
+
+### API Security
+
+**Authentication:**
+```
+Every API route (except register, login, guest, social-login, social-callback)
+runs through requireAuth() middleware:
+  1. Read JWT from httpOnly cookie
+  2. Verify signature + expiry
+  3. Look up player in DB
+  4. Attach player to request
+  5. If any step fails → 401 Unauthorized
+
+JWT payload: { playerId, userTag, role, iat, exp }
+Expiry: 7 days
+```
+
+**Admin Authentication (FIXED from old code):**
+```
+Old code: admin routes had ZERO auth — anyone could access.
+Snakestar: admin routes check BOTH:
+  1. requireAuth() — must be logged in
+  2. player.role === 'admin' — must have admin role
+  3. Missing either → 403 Forbidden
+```
+
+**PIN Storage (FIXED from old code):**
+```
+Old code: PIN stored in PLAINTEXT in database.
+Snakestar: PIN hashed with bcrypt (saltRounds: 10).
+  - Store: hash = await bcrypt.hash(pin, 10)
+  - Verify: await bcrypt.compare(inputPin, hash)
+  - DB column: securityPinHash (NOT securityPin)
+```
+
+**Rate Limiting:**
+```
+In-memory rate limiter (no Redis needed):
+  Map<string, { count: number, resetAt: number }>
+
+Limits per player:
+  - Login attempts:     5 per minute   (brute force prevention)
+  - Register:           3 per hour    (spam prevention)
+  - Guest creation:     3 per hour
+  - Match join:         10 per minute
+  - Chip pack purchase: 5 per minute
+  - Promo code redeem:  5 per minute
+  - Friend request:     10 per minute
+  - Clan create:        2 per hour
+  - General API:        60 per minute
+
+On limit exceeded → 429 Too Many Requests with retry-after header.
+```
+
+**Input Validation (every API route):**
+```
+Every input field validated server-side:
+  - Display name: 1-20 chars, alphanumeric + spaces only
+  - Email: valid email regex
+  - Password: min 6 chars
+  - PIN: exactly 4 digits
+  - Chip amounts: Math.max(0, Math.min(MAX, value)) — clamped
+  - Tier IDs: must exist in ARENA_TIERS config
+  - Clan tags: 3-5 alphanumeric chars
+  - All strings: .trim() + max length enforced
+
+NEVER trust client-sent values. Validate AND sanitize.
+```
+
+**SQL Injection:**
+```
+Prisma ORM uses parameterized queries by default.
+No raw SQL queries anywhere in the codebase.
+Safe by design.
+```
+
+**XSS Prevention:**
+```
+React auto-escapes all rendered content.
+No dangerouslySetInnerHTML used anywhere.
+Player names, clan names, chat messages: all rendered as text content, not HTML.
+Chat messages: max 200 chars, no HTML tags allowed.
+```
+
+**CSRF Protection:**
+```
+All mutations use POST/PUT/DELETE (not GET).
+JWT in httpOnly cookie (not accessible via JavaScript).
+SameSite=Strict on cookies.
+```
+
+---
+
+### Promo & Reward Abuse Prevention (FIXED from old code)
+
+```
+Old code: promo codes and video rewards tracked in-memory.
+Problem: server restart resets tracking → exploit for unlimited chips.
+
+Snakestar: ALL tracking in SQLite database.
+  - VideoReward table: { playerId, claimedAt }
+  - PromoCodeClaim table: { playerId, codeId, claimedAt }
+  - 60-second cooldown: check DB for most recent claim time
+  - Cannot claim same promo code twice
+  - Cannot claim video reward within 60 seconds
+  - Survives server restart
+```
+
+---
+
+### Socket.IO Security
+
+```
+Connection authentication:
+  - Client connects with: ?token={jwt}&roomId={roomId}
+  - Server verifies JWT signature + expiry
+  - Server verifies player is authorized for this room (match join API was called)
+  - Invalid token → disconnect immediately
+  - Connection rate limit: max 5 connections per player per minute
+
+Message validation:
+  - Every incoming message validated for expected fields
+  - Unknown message types → ignored (not error, silently drop)
+  - Malformed messages → ignored
+  - No server-side code execution from client messages
+
+Room isolation:
+  - Player in room A cannot receive events from room B
+  - Player cannot send events to other rooms
+  - Each room has its own game state, food, bots
+```
+
+---
+
+### Security Checklist (What Was Wrong → What We Fix)
+
+| Issue | Old Code | Snakestar |
+-------|---------|-----------|
+| Admin routes unauthenticated | No auth check at all | requireAuth() + role === 'admin' |
+| PIN stored plaintext | securityPin column, plain text | securityPinHash, bcrypt hashed |
+| No rate limiting | Unlimited requests | In-memory rate limiter per endpoint |
+| Promo codes in-memory | Lost on restart, exploitable | DB-backed, 60s cooldown, per-player tracking |
+| Video rewards in-memory | Same problem | DB-backed VideoReward table |
+| No movement validation | Client position trusted | Server validates distance/speed per tick |
+| No match result verification | Client could forge results | HMAC-signed payload, server verification |
+| No duplicate match prevention | Replay results for infinite chips | Unique matchId, reject duplicates |
+| No AFK detection | Players could farm AFK | 60s no-input → AFK, 120s → kick |
+| No connection rate limit | Could spam socket connections | 5 connections/minute per player |
+
+---
+
 ## Cost Summary
 
 | Scenario | Monthly Cost |
