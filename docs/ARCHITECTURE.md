@@ -84,6 +84,21 @@ src/
         config/seed/route.ts           — Seed default config
         modify-chips/route.ts          — Adjust player chips
         ban/route.ts                   — Ban/unban player
+        hof-induct/route.ts            — Run year-end HOF induction
+        reports/route.ts               — List/action player reports
+      player/
+        spectate-status/route.ts       — Check if player is in-match (for spectate)
+        block/route.ts                 — Block/unblock player
+        blocked/route.ts               — List blocked players
+      friends/
+        invite/route.ts                — Send co-op arena invite
+        invite/respond/route.ts       — Accept/reject/counter co-op invite
+        invite/pending/route.ts       — Get pending invites
+        rival/convert/route.ts         — Convert rival to friend
+        rival/hunt/route.ts            — Get rival's current arena for HUNT
+      clans/
+        role/route.ts                  — Promote/demote clan member
+        disband/route.ts               — Disband clan (leader only)
       arena-stats/route.ts            — Live player counts per tier
 
   components/
@@ -224,8 +239,15 @@ src/
         extraction-logs-tab.tsx       — Tab 3: match entries
         loadout-tab.tsx               — Tab 4: cosmetics
 
+    shared/
+      not-signed-in.tsx            — Auth gate for all panels (sign in CTA)
+      report-modal.tsx               — Report player form (reason + details)
+
     game/
       game-canvas.tsx               — THIN shell: canvas + socket init + HUD overlay
+      spectate/
+        spectate-mode.tsx            — Overlay: hides actions, shows SPECTATING badge
+        spectate-banner.tsx          — "👁 Spectating [name]" + leave button
       engine/
         constants.ts                — All game numbers (speeds, sizes, rates)
         types.ts                    — Snake, Food, Star, Room types
@@ -270,13 +292,19 @@ src/
       overlays/
         connecting-overlay.tsx      — Loading states
         reconnecting-banner.tsx     — Top-center wifi pill
-        death-screen.tsx            — Elimination results + killer card
-        extract-screen.tsx          — Extraction success results
-        replay-player.tsx           — Death replay controls + canvas
-
-    modals/
+        death-screen.tsx            — Elimination results + killer card + social buttons + vignette
+        extract-screen.tsx          — Extraction success results + watch video button
+        replay-player.tsx           — Embedded death replay (on death overlay)
+        online-replay-player.tsx    — Full-screen replay with controls (speed, zoom)
+        rewarded-ad-modal.tsx       — Watch-ad wrapper (moved to shared/)
+      spectate/
+        spectate-mode.tsx            — Overlay: hides actions, shows SPECTATING badge (moved to game/)
+        spectate-banner.tsx          — "👁 Spectating [name]" + leave button (moved to game/)
+      modals/
       game-rules-modal.tsx          — 14 sections + 19 FAQs
       player-inspector-modal.tsx    — Click player → inspect popup
+      report-modal.tsx               — Report player form (moved to shared/)
+      co-op-invite-modal.tsx        — Arena selection + eligibility for co-op invite
 
     providers/
       auth-provider.tsx             — User session context
@@ -832,3 +860,689 @@ Room isolation:
 | 10,000 players | ~$100-200 (load balancer + 3-5 VPS) |
 
 SQLite = free. No separate DB server. No Redis. No CDN costs (procedural audio, minimal static assets).
+
+---
+
+## Architecture Gaps & TODOs
+
+> Identified by cross-referencing ARCHITECTURE.md against BUILD-PLAN.md, REBUILD-ANALYSIS.md, gdd-parts/12-requirements-and-gaps.md, package.json, and prisma/schema.prisma.
+> This section is a living document — remove items once resolved.
+
+---
+
+### 1. MISSING SECTIONS (needs to be written)
+
+| # | Missing Section | Why It Matters | Source Reference |
+|---|----------------|---------------|------------------|
+| 1.1 | **Database Schema** | No Prisma models documented with fields anywhere in ARCHITECTURE.md. The 9 models (Player, DailyReward, Challenge, Clan, ClanMember, ClanChat, Friendship, MatchHistory, PromoCode) plus VideoReward, PromoCodeClaim, BroadcastMessage need full field definitions. Current `schema.prisma` is still the Next.js starter (User + Post). | BUILD-PLAN 1.1, Security section mentions VideoReward/PromoCodeClaim |
+| 1.2 | **Offline / Practice Mode** | Barely mentioned (one line in arena tier table). Needs a full section covering: infinite map, 1000 bots, no chips/stars/XP, 30Hz physics tick, no self-destruct, different leaderboard sort (score not chips). | gdd-parts/12 Section 7, REBUILD-ANALYSIS |
+| 1.3 | **Animation Strategy** | `framer-motion` is a dependency (listed in REBUILD-ANALYSIS tech stack, in package.json) but not in ARCHITECTURE.md tech stack table, and no section describes when/where animations are used. | REBUILD-ANALYSIS tech stack, package.json |
+| 1.4 | **Form Handling & Validation** | `react-hook-form` + `zod` are dependencies but undocumented. Need section on which forms use RHF vs controlled inputs, Zod schemas location, shared validation patterns. | package.json |
+| 1.5 | **Toast / Notification System** | `sonner` is the toast library but not mentioned anywhere in architecture. Need to document: when toasts fire, toast types, toast positioning on mobile. | package.json, BUILD-PLAN 6.7 |
+| 1.6 | **Error Handling Strategy** | BUILD-PLAN 6.7 calls for "edge cases, loading states, error boundaries" but architecture has no section. Need: error boundary wrapping, API error response format, retry strategy, loading skeleton pattern. | BUILD-PLAN 6.7 |
+| 1.7 | **Clip Recording & Sharing** | Clip showcase panel is in file structure, but the recording mechanism (how clips are captured from canvas) and storage strategy (where do clips live?) are not documented. | REBUILD-ANALYSIS #23, file structure |
+| 1.8 | **Tournament / Championship Game Mode** | Championships panel has standings and prize tiers, but there's no section describing: how tournaments are structured (timed? elimination?), how standings are calculated, how prizes are distributed. | REBUILD-ANALYSIS #21, screen-content/championships.md |
+
+---
+
+### 2. TECH STACK MISMATCHES
+
+| # | Issue | ARCHITECTURE.md Says | Actual / Other Doc Says | Fix |
+|---|-------|---------------------|----------------------|-----|
+| 2.1 | Framer Motion missing from table | Not listed | REBUILD-ANALYSIS: `Framer Motion (animations)` — also in package.json | Add row to tech stack table |
+| 2.2 | next-auth is in package.json | "JWT (custom, not NextAuth)" | `next-auth@4.24.11` is a dependency | Remove from package.json (stale from starter) |
+| 2.3 | next-intl is in package.json | Not mentioned (no i18n planned) | `next-intl@4.3.4` is a dependency | Remove from package.json if i18n not planned, or document if it is |
+| 2.4 | recharts in package.json | Not mentioned | `recharts@2.15.4` is a dependency | Document usage (likely statistics charts in profile/admin) or remove |
+| 2.5 | @dnd-kit in package.json | Not mentioned | 3 dnd-kit packages are dependencies | Document usage (likely cosmetics reordering or clip upload ordering) or remove |
+| 2.6 | react-hook-form + zod | Not mentioned | Both in package.json | Add to tech stack table under "Forms & Validation" |
+| 2.7 | sonner | Not mentioned | In package.json | Add to tech stack table under "Notifications" |
+| 2.8 | date-fns | Not mentioned | In package.json | Add to tech stack table under "Utilities" |
+
+---
+
+### 3. ARENA TIER COUNT MISMATCH
+
+| Source | Tier Count |
+|--------|------------|
+| ARCHITECTURE.md (section 10 — Arena Tiers in gdd-parts/12, implied in file structure) | 7 competitive tiers + practice |
+| BUILD-PLAN 3.1 | 30 competitive tiers + 3 practice modes |
+| REBUILD-ANALYSIS | "30 competitive arena tiers (10c → 1B buy-in) + 3 practice modes" |
+
+**Resolution needed**: Update ARCHITECTURE.md to reflect 30 tiers + 3 practice. The 7-tier table shown in `gdd-parts/12` appears to be a simplified summary, not the full list. The architecture file structure section's arena-selector panel should note it displays 30 tiers grouped by difficulty, not 5 difficulty filters for 7 tiers.
+
+---
+
+### 4. BOT COUNT PER TIER MISMATCH
+
+| Source | Bot Counts |
+|--------|-----------|
+| ARCHITECTURE.md (On-Demand Game Server section) | "Each room: 30 bots + up to 30 real players" |
+| gdd-parts/12 (Arena Tiers table) | Tier 1: 25 bots, Tier 2: 30, Tier 3: 40, Tier 4: 50, Tiers 5-7: 60 |
+| BUILD-PLAN 2.11 | Not specified |
+
+**Resolution needed**: The "30 bots" in architecture is a simplification. The actual counts scale from 25–60 by tier. Update the On-Demand Game Server section to reference `game-config.ts` for per-tier bot counts rather than stating a flat 30.
+
+---
+
+### 5. FEATURES MENTIONED ELSEWHERE BUT NOT IN ARCHITECTURE
+
+| # | Feature | Where Documented | Missing From |
+|---|---------|-----------------|--------------|
+| 5.1 | Death vignette (3s red overlay) | REBUILD-ANALYSIS (In-Game #17) | ARCHITECTURE.md overlays section |
+| 5.2 | Mute/unmute button in HUD | REBUILD-ANALYSIS (#18) | ARCHITECTURE.md HUD section |
+| 5.3 | Delta compression for bandwidth | REBUILD-ANALYSIS (#63) | ARCHITECTURE.md bandwidth section |
+| 5.4 | Single shared snapshot per room (not per-player) | REBUILD-ANALYSIS (#64) | ARCHITECTURE.md performance section |
+| 5.5 | RewardedAdModal for video rewards | REBUILD-ANALYSIS (#17) | ARCHITECTURE.md file structure / overlays |
+| 5.6 | Graduated commission (0% if ≤3 real, 35% if ≥4) | gdd-parts/12 (Section 8) | ARCHITECTURE.md mentions commission but not the graduated formula |
+| 5.7 | Bot displacement on player join | gdd-parts/12 (Section 5.2) | ARCHITECTURE.md On-Demand Server section (partially, as "adds player") |
+
+---
+
+### 6. CODE-LEVEL GAPS (from gdd-parts/12-requirements-and-gaps.md)
+
+These are implementation bugs/gaps between the rules and code, not architecture gaps, but tracked here for completeness:
+
+| # | Gap | Severity | Status |
+|---|-----|----------|--------|
+| 6.1 | Boost drop interval = 40 frames (~0.75/sec) but rules say ~3/sec (needs 10 frames) | Medium | ❌ Not fixed in config yet |
+| 6.2 | Food collection sound never plays (no server event or client detection) | Medium | ❌ Not wired |
+| 6.3 | Boost activation sound never plays | Low | ❌ Not wired |
+| 6.4 | Wall hit sound never plays | Low | ❌ Not wired |
+| 6.5 | Star chip collection sound missing (online) | Low | ❌ Not wired |
+
+---
+
+### 7. PREREQUISITE STATE
+
+| Check | Status |
+|-------|--------|
+| `src/` directory exists | ❌ No — entire codebase unbuilt |
+| Prisma schema matches architecture (9+ models) | ❌ No — still has default User + Post starter models |
+| `mini-services/game-server/` exists | ❌ No — not created yet |
+| shadcn/ui components initialized | ⚠️ Partial — `components.json` exists but likely starter config |
+
+**Conclusion**: ARCHITECTURE.md is a complete design document for a not-yet-built project. The gaps above are design documentation gaps (sections, mismatches, missing details) — not code bugs. All code-level gaps (Section 6) will be relevant once implementation begins per BUILD-PLAN.md.
+
+---
+
+### 8. PRIORITY ORDER FOR RESOLVING GAPS
+
+1. **[Critical]** Write Database Schema section (#1.1) — needed before any API or auth code
+2. **[High]** Fix arena tier count (#3) and bot count (#4) — fundamental game design
+3. **[High]** Add Framer Motion + form libs to tech stack table (#2.1, #2.6, #2.7, #2.8)
+4. **[High]** Write Offline/Practice Mode section (#1.2) — affects game server architecture
+5. **[Medium]** Add missing HUD/overlay features (#5.1, #5.2, #5.5)
+6. **[Medium]** Document delta compression + shared snapshot (#5.3, #5.4)
+7. **[Medium]** Write Error Handling + Animation + Toast sections (#1.3, #1.5, #1.6)
+8. **[Low]** Clean up stale package.json deps (#2.2, #2.3) or document them
+9. **[Low]** Write Clip Recording + Championship sections (#1.7, #1.8)
+10. **[Low]** Document graduated commission formula (#5.6) and bot displacement (#5.7)
+
+---
+
+## Missing Features (Screen-Content Audit)
+
+> Cross-referenced all 18 screen-content files against ARCHITECTURE.md file structure.
+> These features are DESIGNED (exist in screen-content) but MISSING from the architecture document.
+> All must be built in V1.
+
+---
+
+### A. SPECTATE SYSTEM (CRITICAL — Major Feature)
+
+Described in: `friends-and-search.md`, `dossier.md`, `dashboard.md`
+
+Players can spectate a friend's live match in real-time when the friend is `in-match`.
+
+**How it works:**
+```
+1. Friend's status === 'in-match' → Spectate button appears (pulsing cyan)
+2. Player clicks Spectate → joins friend's arena room as READ-ONLY observer
+3. Spectator receives same state broadcasts as players but CANNOT send input
+4. Spectator sees: all snakes, food, stars, HUD (no action buttons, no extraction)
+5. Spectator's own snake is NOT spawned — they are invisible to players
+6. When spectated player dies/extracts → spectator sees result overlay
+7. Toast: "Spectating [name]'s live match..."
+```
+
+**Server changes needed:**
+- Socket connection accepts `?mode=spectate&targetPlayerId=xxx`
+- Spectators join room but are excluded from: collision checks, kill feed generation, food spawn logic
+- Spectators receive the same `state` broadcast as real players
+- Server tracks spectator count per room (for admin stats)
+- Spectators disconnected if target player disconnects
+
+**Client changes needed:**
+- `src/components/game/spectate/spectate-mode.tsx` — wrapper that hides action buttons, shows "SPECTATING" badge
+- HUD shows "👁 Spectating [name]" banner, no boost/extract/leave buttons
+- No virtual joystick (spectator can't control anything)
+- Can leave spectate any time → returns to lobby
+
+**API:**
+- `GET /api/player/spectate-status?playerId=xxx` — check if player is in-match and get roomId
+- No new match/join needed — spectator connects directly to game server
+
+**Files to add:**
+```
+src/components/game/spectate/
+  spectate-mode.tsx          — Overlay wrapper for spectate HUD adjustments
+  spectate-banner.tsx         — "👁 Spectating [name]" + leave button
+```
+
+---
+
+### B. CO-OP LOBBY INVITE MODAL
+
+Described in: `friends-and-search.md`, `dossier.md`
+
+Players can invite a friend to a specific arena with buy-in stakes.
+
+**How it works:**
+```
+1. Player clicks friend → sees Invite button
+2. Modal opens: shows YOUR balance + FRIEND'S balance
+3. Lists all 30 ARENA_TIERS with eligibility:
+   - "Eligible 🤝" (both can afford)
+   - "You can't afford" (your balance too low)
+   - "They can't afford" (friend's balance too low)
+4. Player selects tier → sends invite
+5. Friend sees invite notification in lobby
+6. Friend can: Accept (joins that tier), Reject, or Counter-propose (different tier)
+7. Toast: "Co-op invite accepted by [name]! Staking buy-in..."
+```
+
+**Server/DB:**
+- New table: `Invite { id, fromPlayerId, toPlayerId, tierId, status, createdAt }`
+- Status: 'pending' | 'accepted' | 'rejected' | 'counter_proposed' | 'expired'
+- Invites expire after 5 minutes
+- On accept: deduct buy-in from both players, both join same room
+
+**Files to add:**
+```
+src/components/panels/social-panel/
+  co-op-invite-modal.tsx    — Arena selection + eligibility + send
+  invite-notification.tsx    — Incoming invite display + accept/reject
+
+prisma schema:
+  Invite model (see above)
+
+API:
+  POST /api/friends/invite/route.ts      — Send co-op invite
+  POST /api/friends/invite/respond/route.ts  — Accept/reject/counter
+  GET  /api/friends/invite/pending/route.ts  — Get pending invites
+```
+
+---
+
+### C. BLOCK PLAYER
+
+Described in: `player-inspector.md`
+
+Players can block other players to prevent interaction.
+
+**How it works:**
+```
+1. Player inspects another player → sees [Ban icon] Block Player button
+2. After blocking: button shows "Player Blocked" (disabled)
+3. Blocked players CANNOT: send friend requests, send co-op invites, appear in search results, send clan invites
+4. Toast: "Player [name] has been added to your block list."
+```
+
+**DB:**
+- New table: `Block { id, blockerId, blockedId, createdAt }`
+- Unique constraint: [blockerId, blockedId]
+
+**Files to add:**
+```
+API:
+  POST /api/player/block/route.ts    — Block/unblock player
+  GET  /api/player/blocked/route.ts   — List blocked players
+
+Update existing:
+  player-inspector/overview-tab.tsx  — Add Block button
+  social-panel/community-search.tsx  — Filter out blocked players
+  friends/request/route.ts           — Reject if blocker/blockee
+```
+
+---
+
+### D. CREATOR SOCIAL CHANNELS (Instagram, YouTube, Twitch)
+
+Described in: `dossier.md`, `player-inspector.md`
+
+Players can link their social media handles on their public profile.
+
+**How it works:**
+```
+1. In dossier (identity editor): 3 input fields for Instagram, YouTube, Twitch handles
+2. On public profile (player inspector): 3 social buttons with external links
+3. Links open in new tab: instagram.com/{handle}, youtube.com/@{handle}, twitch.tv/{handle}
+4. Only shown if the field is truthy (non-empty)
+```
+
+**DB changes:**
+```
+Player model — add 3 optional fields:
+  instagram   String?   — handle without @
+  youtube     String?   — channel/handle
+  twitch      String?   — channel name
+```
+
+**Files to update:**
+```
+  player-profile/stats-tab/identity-editor.tsx  — Add 3 social input fields
+  player-inspector/overview-tab.tsx              — Add 3 social link buttons
+```
+
+---
+
+### E. WATCH VIDEO (+50 CHIPS) ON END OVERLAYS
+
+Described in: `game-hud.md`, `game-rules-modal.md`
+
+After death or extraction, a "Watch Video" button appears for +50 chips.
+
+**How it works:**
+```
+1. Match ends (death or extract) → end overlay shows results
+2. Below results: [📺 Watch Video (Get +50 Chips)] button
+3. Player clicks → RewardedAdModal opens → 5-second ad plays
+4. After ad: +50 chips added to wallet, button disabled
+5. 60-second cooldown (same as store ad reward)
+6. This is SEPARATE from the store's ad reward (+100c, 12/day max)
+```
+
+**Two distinct ad reward systems:**
+```
+Store ad reward:  +100 chips per ad, max 12/day (1,200/day), resets at 00:00 UTC
+End overlay ad:   +50 chips per ad, 60-second cooldown, no daily limit
+```
+
+**Files to add:**
+```
+src/components/game/overlays/
+  rewarded-ad-modal.tsx       — Ad wrapper with timer + reward callback
+
+Update existing:
+  overlays/death-screen.tsx    — Add Watch Video button + ad modal
+  overlays/extract-screen.tsx  — Add Watch Video button + ad modal
+```
+
+---
+
+### F. ADD RIVAL / ADD FRIEND FROM DEATH OVERLAY
+
+Described in: `game-hud.md`
+
+When killed by a real player, the killer card shows social action buttons.
+
+**How it works:**
+```
+1. Player dies → death overlay shows killer card (name, avatar, carried chips)
+2. Killer card has 3 buttons: [👤 View Profile] [⚔️ Add Rival] [➕ Add Friend]
+3. Add Rival → toast: "[killerName] added to your Rival List!"
+4. Add Friend → sends friend request → toast: "Friend request sent to [killerName]"
+5. View Profile → opens player inspector modal for killer
+6. Buttons only shown for REAL players (not bots)
+```
+
+**Files to update:**
+```
+  overlays/death-screen.tsx  — Add 3 buttons to killer card
+  (APIs already exist in /api/friends/)
+```
+
+---
+
+### G. DEATH VIGNETTE (Red Flash)
+
+Described in: `game-hud.md`
+
+Full-screen red radial gradient flash on death.
+
+**Implementation:**
+```
+- Full-screen div: fixed inset-0, pointer-events-none, z-30
+- Red radial gradient: transparent center 30%, rgba(220,38,38,0.6) at edges
+- 300ms fade-in, then fades out over 1s
+- Only triggers on death, NOT on extraction
+```
+
+**Files to update:**
+```
+  overlays/death-screen.tsx  — Add vignette div before results content
+```
+
+---
+
+### H. CLAN WARS, CLAN LEVEL, CLAN ROLES, CLAN EMBLEM
+
+Described in: `syndicates.md`, `friends-and-search.md`
+
+**Clan Level/XP:**
+- Clans have a level + XP system (displayed as violet→amber gradient bar)
+- XP earned from: members winning matches, deposits, activity
+- Level unlocks perks
+
+**Clan Roles:**
+- 3 roles: Leader (👑), Co-Leader, Member (Viper)
+- Leader can: promote/demote, disband clan, edit settings
+- Co-Leader can: accept/decline join requests, manage chat
+- Member: basic participation
+
+**Clan Emblem:**
+- 10 preset emoji emblems: 🐍 🦅 🎯 💀 💎 🔥 👑 ⚡ 🏆 ☣️
+- Selected during clan creation
+- Displayed in clan list, member roster, and in-match leaderboards as [CLAN-TAG]
+
+**Clan Perks (future-proof, basic in V1):**
+- Self-Sponsored Arenas (host custom clan tournaments from treasury)
+- Clan Tag Emblem in match leaderboards
+- Syndicate Wars (weekly Clan vs Clan — UI only in V1, full match in V2)
+
+**DB changes:**
+```
+Clan model — add:
+  level       Int      default 1
+  xp          Int      default 0
+  emblem      String   default '🐍'
+
+ClanMember model — add:
+  role        String   default 'member'  // 'leader' | 'co-leader' | 'member'
+```
+
+**Files to update:**
+```
+  clan-system/my-clan-tab.tsx      — Show level bar, emblem, member roles
+  clan-system/browse-tab.tsx       — Show clan emblem + level in listing
+  clan-system/create-clan-form.tsx — Add emblem selector (10 emoji grid)
+  api/clans/role/route.ts          — NEW: promote/demote member (leader only)
+  api/clans/disband/route.ts       — NEW: disband clan (leader only)
+```
+
+---
+
+### I. RIVALS: HUNT/JOIN ARENA + HEAD-TO-HEAD RECORD
+
+Described in: `friends-and-search.md`, `game-hud.md`
+
+**HUNT mechanism:**
+```
+1. Rival list shows each rival's current arena name
+2. [⚔ HUNT / JOIN ARENA] button on each rival card
+3. Clicking: validates player can afford the tier buy-in, then joins that exact arena
+4. Toast: "⚔️ HUNT INITIATED: Entering [arena] to take down [name]!"
+```
+
+**Head-to-Head Record:**
+```
+Each rivalry tracks: killsByYou, killsOfYou
+Displayed as: "Head-To-Head: You: 3 - Rival: 7"
+Updated on every kill event between the two players.
+```
+
+**Rival-to-Friend conversion:**
+```
+Rival card has [UserPlus icon: "Convert to Friend"] button
+Converts rivalry to friendship, preserves history.
+```
+
+**DB changes:**
+```
+Friendship model — add fields:
+  killsByA    Int  default 0   // A killed B this many times
+  killsByB    Int  default 0   // B killed A this many times
+  type        String           // 'friend' | 'rival' (allows conversion)
+
+API updates:
+  POST /api/friends/rival/convert/route.ts  — Convert rival to friend
+  GET  /api/friends/rival/hunt/route.ts     — Get rival's current arena
+```
+
+---
+
+### J. CHALLENGE DISPATCH (FROM PLAYER INSPECTOR)
+
+Described in: `player-inspector.md`
+
+Players can send a challenge notification to another player.
+
+**How it works:**
+```
+1. Player inspects another player → [Swords icon] Challenge button
+2. Click → toast: "Arena challenge dispatch sent to [name]! ⚔️"
+3. The challenged player sees a notification in their lobby
+4. Challenge = a notification only (no forced match, no special game mode)
+5. It's essentially a "I challenge you to beat my score" social notification
+```
+
+**Implementation:**
+- Uses the existing `BroadcastMessage` or a new `Challenge` notification table
+- Simple notification row: { fromPlayerId, toPlayerId, tierId, message, createdAt }
+
+---
+
+### K. REGIONAL & GLOBAL ALLIES (PLAYER INSPECTOR)
+
+Described in: `player-inspector.md`
+
+**How it works:**
+```
+1. Player inspector shows "Regional Allies" section (same country)
+   - Lists other players from the same country with rank badges
+   - Shows ally count: "REGIONAL ALLIES (INDIA NETWORK) 1,234 Members"
+2. "Global Allies & International Alliances" section (all countries)
+   - Same structure, different color (cyan variant)
+3. This is a READ-ONLY display — it's a leaderboard filtered by country/region
+4. Data comes from the existing leaderboard API with country filter
+```
+
+**Files to update:**
+```
+  player-inspector/overview-tab.tsx  — Add 2 ally sections (leaderboard filtered by country)
+  (Uses existing leaderboard API, no new backend needed)
+```
+
+---
+
+### L. HOF YEARLY RESET & WINNER DETERMINATION
+
+Described in: `hall-of-fame.md`, `championships.md`
+
+**How it works:**
+```
+1. Championship runs for one calendar year (Jan 1 → Dec 31)
+2. On January 1st at 00:00 UTC: automated batch process runs
+3. Process:
+   a. Query: players with highest walletChips per scope (global, regional, national)
+   b. Induct winners into HallOfFame table with year, scope, rank
+   c. Award massive chip prizes to winners
+   d. Reset championship standings (new year begins)
+   e. Archive previous year's data
+4. HOF page shows milestone years: 2026 (current), 2025, 2024, etc.
+5. "PERMANENT MILESTONE IMMORTALITY" — once inscribed, never removed
+```
+
+**DB:**
+```
+HallOfFame model:
+  id, playerId, year, scope ('global'|'regional'|'national'),
+  rank Int, walletChips Int, country, region,
+  inductedAt DateTime, tier String
+
+HallOfFameTier model (6 tiers: Bronze → Omega):
+  id, name, minWalletChips, icon, color
+```
+
+**Implementation:**
+- Cron job or manual admin trigger for Jan 1st induction
+- Admin panel: "Run Year-End Induction" button (for testing + actual use)
+- API: `POST /api/admin/hof-induct/route.ts`
+
+---
+
+### M. NOTSIGNEDIN COMPONENT
+
+Described in: Every screen-content file
+
+**How it works:**
+```
+Every panel checks auth state. If not signed in:
+  → Entire panel replaced by <NotSignedIn /> component
+  → Shows: "Sign in to access [feature name]" + Sign In button
+  → Clicking Sign In navigates to auth screen
+```
+
+**File to add:**
+```
+src/components/shared/
+  not-signed-in.tsx  — Auth gate component for all panels
+```
+
+---
+
+### N. ADDITIONAL DETAIL FIXES
+
+| # | What's Wrong | Correction | Source |
+|---|-------------|------------|--------|
+| N.1 | Architecture says store ad = +50c | Store ad = +100c, 12/day, 1,200/day max. End overlay ad = +50c, 60s cooldown. TWO different systems. | `vault-chip-store.md`, `game-hud.md` |
+| N.2 | No preset avatar system | 8 emoji avatars (🐍☠️👾🤖👑⚡🔥🌌) + custom image upload (PNG/JPG/WebP, 1.5MB max, drag & drop) | `dossier.md` |
+| N.3 | No cosmetic slot detail | Slots: DNA Skin, Tail FX, Kill Sound, Avatar Border, Badge, Title, Emote, Spray, Profile Banner | `shop-and-lab.md`, `pass.md` |
+| N.4 | No challenge streak multiplier | 3-day → ×1.5, 7-day → ×2.0, 14-day → ×3.0 bonus on challenge rewards | `game-rules-modal.md` |
+| N.5 | No Day 7 ad multiplier | Daily reward Day 7: ad reward doubled (multiplier=2 sent to API) | `claims-daily-rewards.md` |
+| N.6 | No real-money pricing | 10 chip packs: ₹10 to ₹15,000 ($0.12 to $175.00) with bonus percentages | `vault-chip-store.md` |
+| N.7 | No store anti-monopoly lock | When yearly purchase cap (25L chips / ₹15,000) reached: store LOCKED for 365 days | `vault-chip-store.md` |
+| N.8 | Bot count is not flat 30 | Bots scale by tier: 25 (tier 1) → 60 (tier 7+) | `gdd-parts/12` |
+| N.9 | No mute button in HUD | Header/HUD needs sound toggle button | `game-hud.md` |
+| N.10 | No chat mention toast | When @mentioned in clan chat → toast notification | `game-hud.md` |
+| N.11 | No online replay player | Full-screen replay player (separate from embedded replay on death screen) | `game-hud.md` |
+| N.12 | Graduated commission not documented | 0% commission if ≤3 real players, 35% if ≥4 real players | `gdd-parts/12` |
+
+---
+
+## Production Readiness Suggestions
+
+> These are NOT in screen-content but are essential for a production multiplayer game.
+> Strongly recommended to add before launch.
+
+---
+
+### P1. CONCURRENT SESSION PREVENTION
+
+**Problem:** Player opens 2 browser tabs → joins 2 matches → double-spends buy-in chips.
+
+**Solution:**
+```
+1. On match join: check if player already has an active room in game server
+2. Game server tracks: Map<playerId, roomId> for all connected players
+3. If player already in a room → reject new connection with error: "Already in a match"
+4. On disconnect/crash: 5-second grace period, then clear from map
+5. Admin can force-clear stuck sessions
+```
+
+---
+
+### P2. MID-MATCH DISCONNECT SAFETY
+
+**Problem:** Player's internet drops mid-match → snake sits idle → gets killed by wall → loses buy-in.
+
+**Solution:**
+```
+1. On disconnect: server marks player as "disconnected" (not immediately removed)
+2. 15-second grace window: snake continues on last known path (straight line)
+3. After 15 seconds: snake is auto-killed (fair — prevents infinite AFK)
+4. Match result still processed normally (death → chips lost, stars dropped)
+5. On reconnect within 15s: player resumes controlling their snake
+6. Reconnecting banner shows countdown: "Reconnecting... 12s remaining"
+```
+
+---
+
+### P3. SOUND TOGGLE / VOLUME CONTROL
+
+**Problem:** No way to mute game sounds. Players in public spaces need this.
+
+**Solution:**
+```
+1. Small 🔊/🔇 toggle button in HUD (top-right, near network info)
+2. Persists preference in localStorage
+3. Mutes all 8 Web Audio sounds
+4. Does NOT affect UI click sounds (if any)
+```
+
+---
+
+### P4. PLAYER REPORTING
+
+**Problem:** Toxic players, cheating suspects, inappropriate names — no way to report.
+
+**Solution:**
+```
+1. Player inspector: [Flag icon] Report Player button
+2. Report modal: reason dropdown (Cheating, Toxic Behavior, Inappropriate Name, Other) + text field
+3. Reports stored in DB: Report { reporterId, reportedId, reason, details, createdAt }
+4. Admin panel: new "Reports" tab to review and action reports
+5. Auto-ban after 5 confirmed reports (admin-reviewed)
+```
+
+---
+
+### P5. CHAT PROFANITY FILTER
+
+**Problem:** Clan chat has no moderation. Toxic messages persist.
+
+**Solution:**
+```
+1. Simple word-block list on server side (array of banned words/phrases)
+2. Messages containing blocked words: replaced with "***" before broadcast
+3. Not a sophisticated AI filter — just a basic blocklist
+4. Admin can add/remove words from the blocklist
+5. Reported messages reviewed by admin
+```
+
+---
+
+### P6. DATABASE BACKUP STRATEGY
+
+**Problem:** SQLite is a single file. If corrupted, all data lost.
+
+**Solution:**
+```
+1. SQLite WAL mode enabled (Write-Ahead Logging) — safer concurrent access
+2. Daily backup: copy db/snakestar.db to db/backups/snakestar-YYYY-MM-DD.db
+3. Keep last 7 days of backups
+4. Backup runs via simple cron/scheduled task
+5. Admin panel shows last backup time + manual backup trigger button
+```
+
+---
+
+### P7. ROOM SHARDING / MATCHMAKING
+
+**Problem:** Architecture says "unlimited rooms" but doesn't describe how rooms are assigned.
+
+**Solution:**
+```
+1. Room ID format: "{tierId}#1", "{tierId}#2" (shard number)
+2. First player joining a tier → creates shard #1
+3. When shard reaches MAX_PLAYERS_PER_SHARD (1000) → create shard #2
+4. Safety cap: max 200 shards per tier
+5. Player joining: assigned to shard with most real players (fill existing first)
+6. Practice mode: each player gets their own instance (no sharing)
+```
+
+---
+
+### P8. TIMEZONE HANDLING
+
+**Problem:** Daily rewards, streaks, and yearly reset — which timezone?
+
+**Solution:**
+```
+1. All server-side timestamps: UTC (DateTime in Prisma = UTC)
+2. Daily reward reset: 00:00 UTC (consistent for all players globally)
+3. Streak calculation: based on UTC date of last claim
+4. Yearly championship/HOF: calendar year UTC (Jan 1 00:00 UTC)
+5. Client displays times in user's local timezone (using Intl.DateTimeFormat)
+6. No per-user timezone setting needed — browser handles display
+```
