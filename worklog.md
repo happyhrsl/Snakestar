@@ -129,3 +129,37 @@ Stage Summary:
 - Dashboard with bento grid, XP progress, player stats, bottom navigation
 - Committed as 2299827, pushed to GitHub
 - Agent-browser cannot verify due to network namespace isolation in sandbox
+
+---
+Task ID: 6
+Agent: Main
+Task: Cross-check page.tsx vs old auth reference components and fix all differences
+
+Work Log:
+- Read all 6 reference files: auth-gate.tsx, login-form.tsx, register-form.tsx, forgot-password-form.tsx, social-buttons.tsx, password-strength.tsx
+- Identified 18 differences between new page.tsx and old reference:
+  - 3 FUNCTIONAL: (1) LoadingScreen was dead code/never rendered, (2) Missing router.refresh() after login/register, (3) Missing framer-motion animations
+  - 11 STYLING: spacing (space-y-3 vs 4), button sizes (sm vs default), icon sizes (3.5 vs 4), divider margins, field spacing, text sizes
+  - 4 TEXT/CONTENT: 'Don't have an account? Register', '← Back to Login', ⚡ emoji, social gap
+- Fixed ALL 18 differences in page.tsx:
+  - Fix #1: Home component now checks status==='loading' → shows LoadingScreen (matches auth-gate.tsx)
+  - Fix #2: Added useRouter import + router.refresh() calls in login and register handlers
+  - Fix #3: Added motion.div wrappers with fade-in/slide-up animations on all forms
+  - Fixes #4-#18: Restored all spacing, sizes, text, colors to match old reference exactly
+- CRITICAL BUG FOUND AND FIXED: getTokenFromCookies() in auth.ts used bracket notation (cookies['snakestar-token']) which doesn't work with Next.js 16's ReadonlyRequestCookies object. Changed to use cookies.get('name')?.value with fallback.
+  - This bug caused ALL authenticated API calls (/api/auth/me) to return 401 even with valid cookies
+  - Root cause: Next.js 16 changed req.cookies from plain object to ReadonlyRequestCookies class
+- Browser verification results:
+  - ✅ Auth screen: Login tab (email, password, remember me, Login button, social dividers, Google/Facebook/Apple disabled, guest button, Register/Forgot links)
+  - ✅ Register tab: All 7 fields (name, email, password+strength, confirm, country select, PIN) + Create Account + Login link
+  - ✅ Forgot Password: Email, PIN, new password, confirm, Reset Password button, ← Back to Login link
+  - ✅ Dashboard: Top bar (avatar, name, userTag, level, 500 chips, logout, XP bar), bento grid (Quick Play, Daily/Weekly challenges, 4 stat cards), guest upgrade banner, bottom nav (Home/Play/Social/Store/Profile)
+  - ✅ Full round-trip: Auth → Dashboard → Logout → Auth (with 'Logged out' toast)
+  - ✅ /api/auth/me returns 200 with full FullPlayer data after guest login
+- Lint: Clean (only pre-existing .cjs utility script errors)
+
+Stage Summary:
+- All 18 UI differences fixed to match old reference components exactly
+- Critical cookie reading bug fixed in auth.ts (affected ALL auth flows)
+- Full end-to-end browser verification passed for auth screen + dashboard
+- Files modified: src/app/page.tsx, src/lib/auth.ts

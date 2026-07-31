@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,18 +36,15 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center space-y-3">
-        <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center">
-          <Skull className="w-6 h-6 text-primary" />
-        </div>
-        <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-        <p className="text-sm text-muted-foreground">Loading arena...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+        <p className="text-sm text-muted-foreground">Loading arena…</p>
       </div>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PASSWORD STRENGTH METER
+//  PASSWORD STRENGTH METER  (matches password-strength.tsx exactly)
 // ═══════════════════════════════════════════════════════════════
 function PasswordStrength({ password }: { password: string }) {
   let score = 0;
@@ -57,7 +56,7 @@ function PasswordStrength({ password }: { password: string }) {
 
   const width = score <= 1 ? 'w-1/4' : score === 2 ? 'w-2/4' : score === 3 ? 'w-3/4' : 'w-full';
   const color = score <= 1 ? 'bg-red-500' : score === 2 ? 'bg-orange-500' : score === 3 ? 'bg-yellow-500' : 'bg-emerald-500';
-  const textColor = score < 2 ? 'text-red-400' : score < 3 ? 'text-yellow-400' : 'text-emerald-400';
+  const textColor = score < 2 ? 'text-red-500' : score < 3 ? 'text-yellow-500' : 'text-emerald-500';
   const label = score <= 1 ? 'Weak' : score === 2 ? 'Fair' : score === 3 ? 'Good' : 'Strong';
 
   if (password.length === 0) return null;
@@ -75,7 +74,7 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  SOCIAL LOGIN BUTTONS (Coming Soon)
+//  SOCIAL LOGIN BUTTONS (matches social-buttons.tsx exactly)
 // ═══════════════════════════════════════════════════════════════
 function SocialButtons({ busy }: { busy: boolean }) {
   const providers = [
@@ -101,17 +100,17 @@ function SocialButtons({ busy }: { busy: boolean }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-3">
       {providers.map((p) => (
         <Button
           key={p.name}
           type="button"
           variant="outline"
-          className="w-full gap-1.5 text-xs text-muted-foreground cursor-not-allowed opacity-50"
+          className="w-full gap-2 text-xs text-muted-foreground cursor-not-allowed opacity-50"
           disabled
           title="Coming soon"
         >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : p.icon}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : p.icon}
           {p.name}
         </Button>
       ))}
@@ -120,9 +119,10 @@ function SocialButtons({ busy }: { busy: boolean }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  LOGIN FORM
+//  LOGIN FORM  (matches login-form.tsx exactly)
 // ═══════════════════════════════════════════════════════════════
 function LoginForm({ onSwitch, onForgot }: { onSwitch: () => void; onForgot: () => void }) {
+  const router = useRouter();
   const setPlayer = useAuthStore((s) => s.setPlayer);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -144,6 +144,7 @@ function LoginForm({ onSwitch, onForgot }: { onSwitch: () => void; onForgot: () 
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Something went wrong.'); return; }
       setPlayer(data.data);
+      router.refresh();
       toast.success('Welcome back to the arena!');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
@@ -156,51 +157,55 @@ function LoginForm({ onSwitch, onForgot }: { onSwitch: () => void; onForgot: () 
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Guest play failed.'); return; }
       setPlayer(data.data);
+      router.refresh();
       toast.success('Playing as guest. Register to keep your progress!');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-1.5">
-        <Label className="text-xs">Email</Label>
-        <div className="relative">
-          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input type="email" required autoComplete="email" placeholder="you@arena.gg"
-            value={email} onChange={(e) => setEmail(e.target.value)} className="pl-8 text-sm" />
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input type="email" required autoComplete="email" placeholder="you@arena.gg"
+              value={email} onChange={(e) => setEmail(e.target.value)} className="pl-8 text-sm" />
+          </div>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Password</Label>
-        <div className="relative">
-          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input type={showPw ? 'text' : 'password'} required autoComplete="current-password"
-            placeholder="........" value={password} onChange={(e) => setPassword(e.target.value)}
-            className="pl-8 pr-9 text-sm" />
-          <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Password</Label>
+          <div className="relative">
+            <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input type={showPw ? 'text' : 'password'} required autoComplete="current-password"
+              placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
+              className="pl-8 pr-9 text-sm" />
+            <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-2">
-        <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(!!v)} />
-        <Label htmlFor="remember" className="text-[11px] text-muted-foreground">Remember me (30 days)</Label>
-      </div>
+        <div className="flex items-center gap-2">
+          <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(!!v)} />
+          <Label htmlFor="remember" className="text-[11px] text-muted-foreground">Remember me (30 days)</Label>
+        </div>
 
-      {error && (
-        <p className="flex items-center gap-1 text-xs text-destructive">
-          <Shield className="h-3 w-3" /> {error}
-        </p>
-      )}
+        {error && (
+          <p className="flex items-center gap-1 text-xs text-destructive">
+            <Shield className="h-3 w-3" /> {error}
+          </p>
+        )}
 
-      <Button type="submit" className="w-full" size="sm" disabled={busy}>
-        {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Login
-      </Button>
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Login
+        </Button>
+      </form>
 
-      <div className="relative">
+      <div className="relative my-5">
         <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
         <div className="relative flex justify-center text-[11px] text-muted-foreground">
           <span className="bg-card px-3">or continue with</span>
@@ -209,33 +214,38 @@ function LoginForm({ onSwitch, onForgot }: { onSwitch: () => void; onForgot: () 
 
       <SocialButtons busy={busy} />
 
-      <div className="relative">
+      <div className="relative my-5">
         <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
         <div className="relative flex justify-center text-[11px] text-muted-foreground">
           <span className="bg-card px-3">or</span>
         </div>
       </div>
 
-      <Button type="button" variant="secondary" className="w-full gap-2" size="sm" disabled={busy} onClick={handleGuest}>
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ghost className="h-3.5 w-3.5" />}
+      <Button type="button" variant="secondary" className="w-full gap-2" disabled={busy} onClick={handleGuest}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ghost className="h-4 w-4" />}
         Play as Guest
       </Button>
-      <p className="text-center text-[10px] text-muted-foreground">
-        Guests get 150 starter chips. Register to keep your progress.
+      <p className="mt-2 text-center text-[11px] text-muted-foreground">
+        ⚡ Guests get 150 starter chips. Register to keep your progress.
       </p>
 
-      <div className="flex items-center justify-between text-[11px] pt-1">
-        <button onClick={onSwitch} className="text-primary hover:underline">Register</button>
-        <button onClick={onForgot} className="text-primary hover:underline">Forgot Password?</button>
+      <div className="mt-4 flex items-center justify-between text-[11px]">
+        <button onClick={onSwitch} className="text-primary hover:underline">
+          Don&apos;t have an account? Register
+        </button>
+        <button onClick={onForgot} className="text-primary hover:underline">
+          Forgot Password?
+        </button>
       </div>
-    </form>
+    </motion.div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REGISTER FORM
+//  REGISTER FORM  (matches register-form.tsx exactly)
 // ═══════════════════════════════════════════════════════════════
 function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
+  const router = useRouter();
   const setPlayer = useAuthStore((s) => s.setPlayer);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -262,92 +272,103 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Something went wrong.'); return; }
       setPlayer(data.data);
+      router.refresh();
       toast.success('Account created! Welcome to Snakestar!');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2.5">
-      <div className="space-y-1">
-        <Label className="text-xs">Display name (max 20 chars)</Label>
-        <Input type="text" required maxLength={20} placeholder="ViperStrike" value={name}
-          onChange={(e) => setName(e.target.value)} className="text-sm" />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Email</Label>
-        <div className="relative">
-          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input type="email" required autoComplete="email" placeholder="you@arena.gg" value={email}
-            onChange={(e) => setEmail(e.target.value)} className="pl-8 text-sm" />
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Display name (up to 20 chars)</Label>
+          <Input type="text" required maxLength={20} placeholder="ViperStrike" value={name}
+            onChange={(e) => setName(e.target.value)} className="text-sm" />
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Password (min 6 chars)</Label>
-        <div className="relative">
-          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input type={showPw ? 'text' : 'password'} required minLength={6} autoComplete="new-password"
-            placeholder="........" value={password} onChange={(e) => setPassword(e.target.value)}
-            className="pl-8 pr-9 text-sm" />
-          <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input type="email" required autoComplete="email" placeholder="you@arena.gg" value={email}
+              onChange={(e) => setEmail(e.target.value)} className="pl-8 text-sm" />
+          </div>
         </div>
-        <PasswordStrength password={password} />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Confirm Password</Label>
-        <div className="relative">
-          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input type={showConfirm ? 'text' : 'password'} required minLength={6} autoComplete="new-password"
-            placeholder="........" value={confirm}
-            onChange={(e) => { setConfirm(e.target.value); if (error) setError(''); }}
-            className="pl-8 pr-9 text-sm" />
-          <button type="button" tabIndex={-1} onClick={() => setShowConfirm(!showConfirm)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            {showConfirm ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Password (min 6 chars)</Label>
+          <div className="relative">
+            <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input type={showPw ? 'text' : 'password'} required minLength={6} autoComplete="new-password"
+              placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
+              className="pl-8 pr-9 text-sm" />
+            <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+          <PasswordStrength password={password} />
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Country</Label>
-        <Select value={country} onValueChange={setCountry}>
-          <SelectTrigger className="text-sm h-8">
-            <SelectValue placeholder="Select country" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((c) => (
-              <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Security PIN (4 digits, optional)</Label>
-        <Input type="text" inputMode="numeric" maxLength={4} pattern="[0-9]{0,4}"
-          autoComplete="off" placeholder="e.g. 1234" value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))} className="text-sm" />
-        <p className="text-[10px] text-muted-foreground">Required for password recovery. Keep it safe!</p>
-      </div>
-      {error && (
-        <p className="flex items-center gap-1 text-xs text-destructive">
-          <Shield className="h-3 w-3" /> {error}
-        </p>
-      )}
-      <Button type="submit" className="w-full" size="sm" disabled={busy}>
-        {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Create Account
-      </Button>
-      <p className="text-center text-[11px]">
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Confirm Password</Label>
+          <div className="relative">
+            <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input type={showConfirm ? 'text' : 'password'} required minLength={6} autoComplete="new-password"
+              placeholder="••••••••" value={confirm}
+              onChange={(e) => { setConfirm(e.target.value); if (error) setError(''); }}
+              className="pl-8 pr-9 text-sm" />
+            <button type="button" tabIndex={-1} onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              {showConfirm ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Country</Label>
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger className="text-sm">
+              <SelectValue placeholder="Select country" />
+            </SelectTrigger>
+            <SelectContent>
+              {COUNTRIES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Security PIN (4 digits, optional)</Label>
+          <Input type="text" inputMode="numeric" maxLength={4} pattern="[0-9]{0,4}"
+            autoComplete="off" placeholder="e.g. 1234" value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))} className="text-sm" />
+          <p className="text-[10px] text-muted-foreground">Required for password recovery. Keep it safe!</p>
+        </div>
+
+        {error && (
+          <p className="flex items-center gap-1 text-xs text-destructive">
+            <Shield className="h-3 w-3" /> {error}
+          </p>
+        )}
+
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Create Account
+        </Button>
+      </form>
+
+      <p className="mt-4 text-center text-[11px]">
         Already have an account?{' '}
         <button onClick={onSwitch} className="text-primary hover:underline">Login</button>
       </p>
-    </form>
+    </motion.div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FORGOT PASSWORD FORM
+//  FORGOT PASSWORD FORM  (matches forgot-password-form.tsx exactly)
 // ═══════════════════════════════════════════════════════════════
 function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState('');
@@ -384,124 +405,124 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-sm font-semibold">Password Reset!</p>
         <p className="text-xs text-muted-foreground">Your password has been changed. You can now log in with your new password.</p>
-        <Button size="sm" className="mt-2" onClick={onBack}>Back to Login</Button>
+        <Button className="mt-2" onClick={onBack}>Back to Login</Button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2.5">
-      <div className="space-y-1">
-        <Label className="text-xs">Email</Label>
-        <Input type="email" required placeholder="you@arena.gg" value={email}
-          onChange={(e) => setEmail(e.target.value)} className="text-sm" />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">4-Digit Security PIN</Label>
-        <Input type="text" inputMode="numeric" required maxLength={4} pattern="[0-9]{4}"
-          autoComplete="off" placeholder="1234" value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))} className="text-sm" />
-        <p className="text-[10px] text-muted-foreground">This is the PIN you set during registration.</p>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">New Password (min 6 chars)</Label>
-        <div className="relative">
-          <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input type={showPw ? 'text' : 'password'} required minLength={6} placeholder="........"
-            value={newPw} onChange={(e) => setNewPw(e.target.value)} className="pl-8 pr-9 text-sm" />
-          <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Email</Label>
+          <Input type="email" required placeholder="you@arena.gg" value={email}
+            onChange={(e) => setEmail(e.target.value)} className="text-sm" />
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Confirm New Password</Label>
-        <Input type="password" required minLength={6} placeholder="........" value={confirmPw}
-          onChange={(e) => { setConfirmPw(e.target.value); if (error) setError(''); }} className="text-sm" />
-      </div>
-      {error && (
-        <p className="flex items-center gap-1 text-xs text-destructive">
-          <Shield className="h-3 w-3" /> {error}
-        </p>
-      )}
-      <Button type="submit" className="w-full" size="sm" disabled={busy}>
-        {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Reset Password
-      </Button>
-      <p className="text-center text-[11px]">
-        <button onClick={onBack} className="text-primary hover:underline">Back to Login</button>
+        <div className="space-y-1.5">
+          <Label className="text-xs">4-Digit Security PIN</Label>
+          <Input type="text" inputMode="numeric" required maxLength={4} pattern="[0-9]{4}"
+            autoComplete="off" placeholder="1234" value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))} className="text-sm" />
+          <p className="text-[10px] text-muted-foreground">This is the PIN you set during registration.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">New Password (min 6 chars)</Label>
+          <div className="relative">
+            <KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input type={showPw ? 'text' : 'password'} required minLength={6} placeholder="••••••••"
+              value={newPw} onChange={(e) => setNewPw(e.target.value)} className="pl-8 pr-9 text-sm" />
+            <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Confirm New Password</Label>
+          <Input type="password" required minLength={6} placeholder="••••••••" value={confirmPw}
+            onChange={(e) => { setConfirmPw(e.target.value); if (error) setError(''); }} className="text-sm" />
+        </div>
+        {error && (
+          <p className="flex items-center gap-1 text-xs text-destructive">
+            <Shield className="h-3 w-3" /> {error}
+          </p>
+        )}
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Reset Password
+        </Button>
+      </form>
+      <p className="mt-4 text-center text-[11px]">
+        <button onClick={onBack} className="text-primary hover:underline">← Back to Login</button>
       </p>
-    </form>
+    </motion.div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  AUTH SCREEN
+//  AUTH SCREEN  (matches auth-gate.tsx exactly)
 // ═══════════════════════════════════════════════════════════════
 function AuthScreen() {
   const [view, setView] = useState<AuthView>('login');
 
   return (
     <div className="auth-outer min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="auth-inner w-full max-w-sm flex flex-col items-center gap-4">
-        {/* Brand Section */}
-        <div className="auth-brand text-center hidden">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-3">
+      <div className="auth-inner w-full max-w-md">
+        {/* Brand Section — shown on desktop via media query in globals.css */}
+        <div className="auth-brand text-center mb-6 hidden">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-4">
             <Skull className="w-9 h-9 text-primary" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">
             {APP_NAME}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1.5">
             Hunt. Harvest. Extract.{' '}
             <span className="text-primary font-semibold">Don&apos;t get caught.</span>
           </p>
         </div>
 
         {/* Card */}
-        <div className="auth-card-wrapper w-full max-w-sm">
-          <Card className="border-border/50 bg-card/80 backdrop-blur">
-            <CardHeader className="pb-2 pt-4 px-4">
-              {/* Mobile brand - shown only when auth-brand is hidden */}
-              <div className="md:hidden text-center mb-1">
-                <div className="mx-auto w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-2">
-                  <Skull className="w-5 h-5 text-primary" />
-                </div>
-                <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">
-                  {APP_NAME}
-                </h1>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Hunt. Harvest. Extract.{' '}
-                  <span className="text-primary font-semibold">Don&apos;t get caught.</span>
-                </p>
+        <Card className="auth-card-wrapper border-primary/20 bg-card/80 backdrop-blur">
+          <CardHeader className="pb-3">
+            {/* Mobile brand — shown only when auth-brand is hidden */}
+            <div className="md:hidden text-center mb-4">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-4">
+                <Skull className="w-9 h-9 text-primary" />
               </div>
-              <CardTitle className="text-base">Enter the arena</CardTitle>
-              <CardDescription className="text-xs">Sign in or create an account to play.</CardDescription>
-            </CardHeader>
-            <CardContent className="auth-card-content px-4 pb-4">
-              {view === 'forgot' ? (
-                <ForgotPasswordForm onBack={() => setView('login')} />
-              ) : (
-                <Tabs value={view} onValueChange={(v) => setView(v as AuthView)}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login" className="gap-1.5 text-xs">
-                      <LogIn className="h-3.5 w-3.5" /> Login
-                    </TabsTrigger>
-                    <TabsTrigger value="register" className="gap-1.5 text-xs">
-                      <UserPlus className="h-3.5 w-3.5" /> Register
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="login" className="mt-3">
-                    <LoginForm onSwitch={() => setView('register')} onForgot={() => setView('forgot')} />
-                  </TabsContent>
-                  <TabsContent value="register" className="mt-3">
-                    <RegisterForm onSwitch={() => setView('login')} />
-                  </TabsContent>
-                </Tabs>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">
+                {APP_NAME}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                Hunt. Harvest. Extract.{' '}
+                <span className="text-primary font-semibold">Don&apos;t get caught.</span>
+              </p>
+            </div>
+            <CardTitle className="text-lg">Enter the arena</CardTitle>
+            <CardDescription className="text-sm">Sign in or create an account to play.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {view === 'forgot' ? (
+              <ForgotPasswordForm onBack={() => setView('login')} />
+            ) : (
+              <Tabs value={view} onValueChange={(v) => setView(v as AuthView)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login" className="gap-1.5 text-xs">
+                    <LogIn className="h-3.5 w-3.5" /> Login
+                  </TabsTrigger>
+                  <TabsTrigger value="register" className="gap-1.5 text-xs">
+                    <UserPlus className="h-3.5 w-3.5" /> Register
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="login" className="mt-4">
+                  <LoginForm onSwitch={() => setView('register')} onForgot={() => setView('forgot')} />
+                </TabsContent>
+                <TabsContent value="register" className="mt-4">
+                  <RegisterForm onSwitch={() => setView('login')} />
+                </TabsContent>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -718,14 +739,10 @@ function Dashboard({ player }: { player: FullPlayer }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MAIN PAGE
+//  MAIN PAGE  (matches auth-gate.tsx routing logic exactly)
 // ═══════════════════════════════════════════════════════════════
 export default function Home() {
   const { status, player, setPlayer, logout } = useAuthStore();
-
-  // Show auth screen immediately (no loading state)
-  // Session check happens in background via useEffect
-  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -737,13 +754,19 @@ export default function Home() {
           logout();
         }
       })
-      .catch(() => logout())
-      .finally(() => setChecking(false));
+      .catch(() => logout());
   }, [setPlayer, logout]);
 
+  // Fix #1: Show loading screen when status is "loading" (initial Zustand state)
+  if (status === 'loading') {
+    return <LoadingScreen />;
+  }
+
+  // Fix #2: Show dashboard when authenticated
   if (status === 'authenticated' && player) {
     return <Dashboard player={player} />;
   }
 
+  // Fix #3: Show auth screen when unauthenticated
   return <AuthScreen />;
 }

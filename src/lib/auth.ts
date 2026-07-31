@@ -25,9 +25,13 @@ export function verifyToken(token: string): JwtPayload | null {
   }
 }
 
-// Purpose: Extract JWT from request cookies
+// Purpose: Extract JWT from request cookies (handles Next.js ReadonlyRequestCookies and plain objects)
 export function getTokenFromCookies(
-  cookies: Record<string, string | undefined>
+  cookies: Record<string, string | undefined> | { get: (name: string) => { value: string } | undefined }
 ): string | null {
-  return cookies["snakestar-token"] || null;
+  // Next.js 16: req.cookies is a ReadonlyRequestCookies with .get() method
+  if (typeof cookies.get === 'function') {
+    return cookies.get('snakestar-token')?.value ?? null;
+  }
+  return cookies['snakestar-token'] ?? null;
 }
