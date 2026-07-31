@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <div id="app" dangerouslySetInnerHTML={{ __html: LOADING_HTML + '<div id=\'auth-screen\' style=\'display:none\'>' + AUTH_HTML + '</div>' }} />
+      <div id="app" dangerouslySetInnerHTML={{ __html: AUTH_HTML }} />
       <script dangerouslySetInnerHTML={{ __html: APP_JS }} />
     </>
   );
@@ -401,12 +401,9 @@ async function hfg(ev){
   sbb('bf',false,'Reset Password');
 }
 
-// Session check + dashboard
+// Session check — non-blocking, auth screen already visible
 (async function(){
-  try{var r=await fetch('/api/auth/me');var j=await r.json();if(j.success&&j.player){sd(j.player);return}}catch(e){}
-  // Not authenticated — show auth screen
-  var ld=document.getElementById('loading-state');if(ld)ld.remove();
-  var as=document.getElementById('auth-screen');if(as)as.style.display='';
+  try{var r=await fetch('/api/auth/me');var j=await r.json();if(j.success&&j.player){sd(j.player)}}catch(e){}
 })();
 
 function sd(p){
