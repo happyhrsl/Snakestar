@@ -411,3 +411,67 @@ Stage Summary:
 - CSS was also broken (Tailwind v4 @theme missing) — fixed in parallel
 - New mobile-first design: portrait-optimized auth, responsive bento grid, bottom tab navigation
 - Server logs clean: no errors, no cross-origin blocks, 200s on page load, 401 on auth check
+
+---
+Task ID: mobile-first-ui-build
+Agent: frontend-styling-expert
+Task: Build mobile-first Snakestar UI
+
+Work Log:
+- Wrote complete self-contained page.tsx (289 lines) replacing previous version
+- Auth screen: gradient snake logo, SNAKESTAR gradient title, "Hunt · Harvest · Extract" subtitle
+- Segmented pill control for Sign In / Register (not tabs)
+- Sign In: email + password + submit button
+- Register: display name + email + password + confirm password + country select + submit button
+- Password mismatch validation on register
+- Play as Guest outline button + "Guests get 150 starter chips" text
+- Divider with "or" text between form and guest button
+- Auth screen fits in 584px content height (well within 667px portrait viewport)
+- Dashboard: sticky h-12 header (logo left, chip balance center-right, logout X right) with backdrop-blur glassmorphism
+- Hero card: gradient border, welcome message, level + userTag, PLAY button, XP bar with percentage, quick stats (matches, best score)
+- 10-item bento grid: 2col mobile, 3col sm, 4col md, 5col lg — each card 72px tall with emoji icon, title, subtitle
+- Daily Challenges: 3 static placeholder challenges with emoji, label, chip reward
+- 5-tab bottom nav: Home, Arena, Shop, Ranks, Profile — with safe-area-inset-bottom for notched devices
+- Non-Home tabs render placeholder with tab emoji, name, description, "Coming soon" badge
+- Dark theme: #08080f background, #111119 cards, #1a1a2e borders, emerald-400/teal-400 accents
+- All interactive elements have active:scale-[0.97] touch feedback
+- Inputs: h-10, rounded-xl, bg-[#0d0d15], border-[#1a1a2e], emerald focus border
+- Buttons: rounded-xl, font-bold, text-sm
+- Cards: rounded-2xl, hover:border-emerald-500/30 transition
+- Uses 100dvh throughout (no vh units) to avoid mobile browser chrome issues
+- Only 3 imports: @/stores/auth-store, @/lib/constants, sonner — no shadcn, lucide, framer-motion, or @/components
+- Emoji icons exclusively (no icon library imports)
+- Loading state: centered pulsing snake emoji
+- Session check: fetch /api/auth/me on mount, handles network errors gracefully
+- All API calls: POST /api/auth/login, POST /api/auth/register, POST /api/auth/guest, GET /api/auth/me
+
+Stage Summary:
+- Single self-contained page.tsx (289 lines) with auth + dashboard + 5 tabs
+- Mobile-first: auth fits viewport without scroll, dashboard shows hero + 8+ bento cards before scroll needed
+- Zero dependency on @/components, shadcn, lucide, or framer-motion — immune to import chain failures
+- Gaming aesthetic: dark theme, emerald neon accents, glassmorphism headers/navs, gradient text
+---
+Task ID: fix-blank-screen-final
+Agent: Main
+Task: Fix blank screen - server-rendered page with inline JS
+
+Work Log:
+- Discovered dev server exits when stdin reaches EOF (status code 0, not a crash)
+- Container kills all background processes ~60-90s after parent shell exits
+- Found Turbopack JSX parser bug with emoji characters in JSX text content
+- Found Turbopack JSX parser bug with WebkitTextFillColor CSS property
+- Removed all emoji from JSX text content (replaced with ▲ triangle)
+- Removed all vendor-prefixed CSS properties (WebkitBackgroundClip, etc)
+- Made page fully server-rendered (no client JS bundles needed)
+- All interactivity via inline script in dangerouslySetInnerHTML
+- Page is self-contained at 29KB - works even if server dies after serving HTML
+- Verified via Caddy proxy: 200 OK, all content present
+
+Stage Summary:
+- ROOT CAUSE 1: Turbopack parser crashes on emoji in JSX text and WebkitTextFillColor
+- ROOT CAUSE 2: Dev server exits when stdin reaches EOF (Next.js CLI behavior)
+- ROOT CAUSE 3: Container kills background processes after shell exits
+- FIX: Server-rendered page with inline JS, no external bundles, no emoji in JSX
+- Auth screen renders: SNAKESTAR logo, Sign In/Register tabs, Play as Guest button
+- Dashboard renders when authenticated: header, hero card, bento grid, bottom nav
+
