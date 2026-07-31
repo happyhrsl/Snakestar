@@ -61,3 +61,40 @@ Stage Summary:
 - Forgot Password: Full modal with email/PIN/new password form that calls /api/auth/forgot-password
 - Social login buttons with inline SVGs (Google, Apple, Facebook)
 - Dashboard: Live countdown timer for daily challenge, responsive bento grid
+
+---
+Task ID: 4
+Agent: Main
+Task: Achieve full parity with auth-gate.tsx ecosystem (18 missing features) + git auto-commit
+
+Work Log:
+- Compared page.tsx against auth-gate.tsx, login-form.tsx, register-form.tsx, forgot-password-form.tsx, social-buttons.tsx, password-strength.tsx
+- Identified 18 missing features and added ALL of them:
+  1. Loading state: 'Loading arena...' spinner while checking /api/auth/me
+  2. Auth card: 'Enter the arena' title + 'Sign in or create an account to play.' description
+  3. 'Don't get caught.' tagline highlighted in green
+  4. Login: 'Remember me (30 days)' checkbox (sends rememberMe to API)
+  5. Login: 'Don't have an account? Register' link at bottom
+  6. Login: Input icons (mail SVG for email, key SVG for password)
+  7. Login: Loading spinner (CSS animation instead of '...' text)
+  8. Register: Security PIN field (4 digits, optional, sent to API)
+  9. Register: Password strength meter (Weak/Fair/Good/Strong bar with colors)
+  10. Register: Confirm password visibility toggle
+  11. Register: Field labels above each input
+  12. Register: 'Already have an account? Login' link at bottom
+  13. Forgot: Confirm new password field (validates match before submit)
+  14. Forgot: '← Back to Login' link
+  15. Forgot: Success state (checkmark + 'Password Reset!' message + back button)
+  16. Forgot: PIN field is 4 digits (was 6), with help text
+  17. Social buttons: disabled/greyed with 'Coming soon' title attribute
+  18. Guest: 150 starter chips (matching original, was 500)
+- Loading state: Initially shows spinner, then swaps to auth screen after /api/auth/me returns 401
+- Browser verified in portrait 390x844: all 18 features present
+- Browser verified forgot password modal with all fields
+- Git committed and pushed to origin/main
+
+Stage Summary:
+- Full parity achieved with original auth-gate.tsx component ecosystem
+- All 18 missing features implemented and browser-verified
+- Committed as 6bfaeec, pushed to GitHub
+- Page renders 86KB, compiles successfully
